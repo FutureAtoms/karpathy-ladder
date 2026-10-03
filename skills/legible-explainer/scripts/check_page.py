@@ -182,7 +182,21 @@ PAGE_PROBE = r"""
   for (const svg of document.querySelectorAll('svg')) {
     const sr = svg.getBoundingClientRect();
     if (!sr.width) continue;
-    const texts = [...svg.querySelectorAll('text')].map(el => ({el, r: el.getBoundingClientRect()})).filter(t => t.r.width > 0);
+    // Compare the letters, not the font's line cell: on Linux a bold face can report a cell
+    // 1.6 em tall, so stacked lines that do not touch would count as an overlap.
+    const inkBox = el => {
+      const r = el.getBoundingClientRect();
+      try {
+        const n = el.getNumberOfChars(), ctm = el.getScreenCTM();
+        if (!n || !ctm || Math.abs(ctm.b) > 1e-6 || Math.abs(ctm.c) > 1e-6) return r;
+        const fs = Math.max(...[el, ...el.querySelectorAll('tspan')].map(e => parseFloat(getComputedStyle(e).fontSize) || 0)) * Math.abs(ctm.d);
+        const y = p => new DOMPoint(p.x, p.y).matrixTransform(ctm).y;
+        const top = Math.max(r.top, y(el.getStartPositionOfChar(0)) - 0.8 * fs);
+        const bottom = Math.min(r.bottom, y(el.getStartPositionOfChar(n - 1)) + 0.25 * fs);
+        return bottom > top ? {left: r.left, right: r.right, top, bottom, width: r.width, height: bottom - top} : r;
+      } catch (e) { return r; }
+    };
+    const texts = [...svg.querySelectorAll('text')].map(el => ({el, r: inkBox(el)})).filter(t => t.r.width > 0);
     let n = 0;
     for (let i = 0; i < texts.length && n < 10; i++) for (let j = i + 1; j < texts.length && n < 10; j++) {
       if (hits(texts[i].r, texts[j].r)) {
@@ -425,7 +439,9 @@ GOOD = """<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name=
 @media (max-width:680px){p{text-align:left;hyphens:manual}} .box{border:1px solid #000;padding:8px}</style></head>
 <body><div class="box"><h1>Good page</h1><p>The pump supplies fuel to the engine when the switch is on. The pump stops when the
 switch is off. This paragraph is long enough to wrap onto more than two lines at the phone width and at the desktop width.</p>
-<blockquote data-ste="ignore">Original: the plan — as written — is fine.</blockquote><p>Source: © IETF 2022, Plex™.</p></div></body></html>"""
+<blockquote data-ste="ignore">Original: the plan — as written — is fine.</blockquote><p>Source: © IETF 2022, Plex™.</p>
+<svg width="300" height="70" viewBox="0 0 300 70" style="font:13px monospace"><text x="8" y="20"><tspan font-weight="700">code_verifier</tspan> = random</text>
+<text x="8" y="39"><tspan font-weight="700">code_challenge</tspan> =</text><text x="8" y="58">  BASE64URL(SHA256(v))</text></svg></div></body></html>"""
 
 BAD = """<!doctype html><html><head><meta charset="utf-8"><script src="https://cdn.example.com/x.js"></script>
 <style>p{max-width:60ch;text-wrap:balance} .bar{border-left:4px solid red;padding:4px} .wide{width:2000px}
@@ -438,6 +454,7 @@ BAD = """<!doctype html><html><head><meta charset="utf-8"><script src="https://c
 <div class="ps">A card with a pseudo-element bar on the left edge, long enough.</div>
 <span class="clip">Important instruction that is clipped</span>
 <svg width="300" height="60" viewBox="0 0 300 60"><text x="10" y="30">First label here</text><text x="20" y="32">Second label</text><text x="10" y="100">Lost label</text></svg>
+<svg width="300" height="60" viewBox="0 0 300 60" style="font:14px monospace"><text x="8" y="24">Upper line</text><text x="8" y="32">Lower line</text></svg>
 <div class="wide">wide</div><img src="local.png"></body></html>"""
 
 
@@ -462,10 +479,10 @@ def self_test() -> int:
         if r["passed"] or not want <= rules:
             failures += 1
             print("bad page FAILED: missing", sorted(want - rules), "got", sorted(rules))
-        for needle in ["div.top", "div.thin", "div.ps::before"]:
+        for needle in ["div.top", "div.thin", "div.ps::before", '"Upper line" overlaps "Lower line"']:
             if needle not in details:
                 failures += 1
-                print("bad page FAILED: no accent finding for", needle)
+                print("bad page FAILED: no finding for", needle)
     print("self-test:", "OK" if not failures else f"{failures} failure(s)")
     return 1 if failures else 0
 

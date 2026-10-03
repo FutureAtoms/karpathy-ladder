@@ -31,4 +31,14 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Run the repo checks
+        env:
+          CHECK_OUT: ${{ runner.temp }}/check-output
         run: ./tests/check.sh
+
+      - name: Upload screenshots and reports when a check fails
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-output
+          path: ${{ runner.temp }}/check-output
+          retention-days: 7

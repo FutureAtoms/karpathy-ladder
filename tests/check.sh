@@ -6,8 +6,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 S=skills/legible-explainer/scripts
-OUT=$(mktemp -d)
-trap 'rm -rf "$OUT"' EXIT
+# Screenshots and reports go to a temporary folder, or to $CHECK_OUT when it is set (CI keeps them).
+if [ -n "${CHECK_OUT:-}" ]; then
+  OUT=$CHECK_OUT; mkdir -p "$OUT"
+else
+  OUT=$(mktemp -d); trap 'rm -rf "$OUT"' EXIT
+fi
 fail=0
 
 step() { printf '\n== %s\n' "$1"; }

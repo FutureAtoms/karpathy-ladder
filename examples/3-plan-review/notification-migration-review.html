@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Notification migration review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fbfbf9;
+    --ink: #1b1d1f;
+    --ink-2: #3a3e43;
+    --muted: #6b7077;
+    --hair: #cfd2d6;
+    --tint: #f1f2f3;
+    --zebra: #f6f7f8;
+    --blue: #1f5fbf;
+    --blue-tint: #e7eef9;
+    --blue-mid: #a9c1e6;
+    --red: #c4302b;
+    --red-tint: #fbeceb;
+    --sans: "IBM Plex Sans Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --gap: 22px;
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16181b; --ink: #e4e6e9; --ink-2: #c3c7cc; --muted: #969ba3; --hair: #3a3e44;
+      --tint: #22252a; --zebra: #1c1f23; --blue: #7aa7ec; --blue-tint: #1d2a3d; --blue-mid: #3f5f8f;
+      --red: #f07a73; --red-tint: #3a2120;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 var(--sans); }
+  h1, h2, h3, p { margin: 0; text-wrap: normal; }
+  p { text-align: justify; hyphens: auto; }
+  code, .mono { font-family: var(--mono); hyphens: none; }
+  .muted { color: var(--muted); }
+  .d { display: block; font-size: 12px; color: var(--muted); }
+  .blue { color: var(--blue); }
+  .red { color: var(--red); }
+
+  /* COMPONENT: drawing frame with zone margins (1-8 across, A-D down) */
+  .sheet { padding: 16px; }
+  .frame { display: grid; grid-template-columns: 20px minmax(0, 1fr) 20px; grid-template-rows: 20px auto 20px; border: 1px solid var(--ink); }
+  .zones { display: grid; font: 11px/1 var(--mono); color: var(--ink-2); }
+  .zones span { display: grid; place-items: center; position: relative; }
+  .zones-top, .zones-bottom { grid-column: 2; grid-template-columns: repeat(8, 1fr); }
+  .zones-top { grid-row: 1; }
+  .zones-bottom { grid-row: 3; }
+  .zones-left, .zones-right { grid-row: 2; grid-template-rows: repeat(4, 1fr); }
+  .zones-left { grid-column: 1; }
+  .zones-right { grid-column: 3; }
+  .zones-top span + span::before, .zones-bottom span + span::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--ink); }
+  .zones-left span + span::before, .zones-right span + span::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--ink); }
+  .content { grid-column: 2; grid-row: 2; border: 1px solid var(--ink); padding: var(--gap); min-width: 0; }
+  /* .frame.plain: no zone margins, for a working diagram that needs every pixel of width */
+  .frame.plain { grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: 0 auto 0; border: 0; }
+  .frame.plain .zones { display: none; }
+  .frame.plain .content { border: 0; padding: 0; }
+
+  /* Panel grid: 12 columns. Give each panel a span-N class; each row adds up to 12. */
+  .panels { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); align-items: stretch; }
+  .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; } .span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; }
+  .span-9 { grid-column: span 9; } .span-12 { grid-column: span 12; }
+  .stack { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+  .stack > .panel { flex: 1; }
+
+  /* COMPONENT: panel with letter chip, title and meta label */
+  .panel { border: 1.5px solid var(--ink); background: var(--paper); display: flex; flex-direction: column; min-width: 0; }
+  .panel-head { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 1px solid var(--ink); min-height: 32px; }
+  .panel-id { flex: 0 0 32px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 600 15px/1 var(--sans); }
+  .panel-title { flex: 1 1 auto; min-width: 0; padding: 6px 12px; font: 600 16px/1.25 var(--sans); align-self: center; }
+  .panel-meta { flex: 0 1 auto; margin-left: auto; padding: 6px 12px; align-self: center; font: 10.5px/1.3 var(--mono); color: var(--muted); text-align: right; }
+  .panel-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .panel-note { padding: 10px 18px 12px; font-size: 12.5px; color: var(--muted); }
+  .panel-note p + p { margin-top: 4px; }
+  .sub { font: 500 13.5px/1.3 var(--sans); color: var(--ink); }
+  .caption { font: 10.5px/1.3 var(--mono); color: var(--muted); }
+  hr.hair { border: 0; height: 1px; background: var(--hair); margin: 2px 0; width: 100%; flex: none; }
+  hr.hair.flush { margin: 0; }
+
+  /* COMPONENT: structure tree (root box, branch boxes, item lists) */
+  .tree { display: flex; flex-direction: column; align-items: center; }
+  .tree-root { border: 1.5px solid var(--ink-2); background: var(--blue-tint); padding: 8px 28px; text-align: center; }
+  .tree-root b { display: block; font: 600 17px/1.2 var(--sans); }
+  .tree-root span { font-size: 12.5px; color: var(--ink-2); }
+  .tree-stem { width: 1px; height: 14px; background: var(--ink); }
+  .tree-branches { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 18px; width: 100%; position: relative; padding-top: 14px; }
+  .tree-branches::before { content: ""; position: absolute; top: 0; height: 1px; background: var(--ink); left: calc(100% / var(--n, 2) / 2); right: calc(100% / var(--n, 2) / 2); }
+  .tree-branch { position: relative; min-width: 0; }
+  .tree-branch::before { content: ""; position: absolute; top: -14px; left: 50%; width: 1px; height: 14px; background: var(--ink); }
+  .tree-node { border: 1.5px solid var(--ink-2); padding: 6px 10px; text-align: center; font: 600 14px/1.25 var(--sans); }
+  .tree-list { list-style: none; margin: 10px 0 0 14px; padding: 0 0 0 16px; position: relative; }
+  .tree-list::before { content: ""; position: absolute; left: 0; top: -10px; bottom: 9px; width: 1px; background: var(--ink-2); }
+  .tree-list li { position: relative; padding: 3px 0; font-size: 13.5px; }
+  .tree-list li::before { content: ""; position: absolute; left: -16px; top: 12px; width: 11px; height: 1px; background: var(--ink-2); }
+  .tree-list small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+  .tree-list .k { font: 10.5px var(--mono); color: var(--muted); margin-right: 6px; white-space: nowrap; }
+
+  /* COMPONENT: callouts and severity chips (WARNING = injury or data loss, CAUTION = damage or outage) */
+  .callout { background: var(--tint); border: 1px solid var(--hair); padding: 8px 12px; font-size: 13px; }
+  .callout small { display: block; color: var(--muted); font-size: 11.5px; }
+  .callout.warning { background: var(--red-tint); border-color: var(--red); }
+  .callout.caution { background: var(--tint); border-color: var(--ink-2); }
+  .sev { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .04em; padding: 3px 6px; border: 1px solid currentColor; margin-right: 6px; vertical-align: 1px; }
+  .sev.warning { color: var(--red); background: var(--red-tint); }
+  .sev.caution { color: var(--ink); background: var(--tint); }
+  .sev.note { color: var(--blue); background: var(--blue-tint); }
+
+  /* COMPONENT: annotated line. Each .seg holds the annotated text (.t) and its .ann-label.
+     When the line wraps or labels collide, the script below switches it to a numbered legend. */
+  .ann-block { display: flex; flex-direction: column; gap: 6px; }
+  .ann-wrap { display: inline-flex; flex-direction: column; max-width: 100%; align-self: flex-start; }
+  .ann-line { font: 15px/1.2 var(--mono); padding-bottom: 46px; position: relative; overflow-wrap: anywhere; }
+  .seg { position: relative; display: inline-block; white-space: nowrap; }
+  .seg > .t { position: relative; display: inline-block; }
+  .seg > .t::after { content: ""; position: absolute; left: 1px; right: 1px; top: calc(100% + 3px); height: 5px; border: 1px solid var(--blue); border-top: 0; }
+  .seg.bad > .t::after { border-color: var(--red); }
+  .ann-label { position: absolute; top: calc(100% + 11px); left: 50%; transform: translateX(-50%); font: 11.5px/1.2 var(--sans); color: var(--blue); white-space: nowrap; }
+  .seg.bad .ann-label { color: var(--red); }
+  .ann-label.lane-2 { top: calc(100% + 27px); }
+  .ann-label.start { left: 0; transform: none; }
+  .ann-label.end { left: auto; right: 0; transform: none; }
+  .ann-line.legend { padding-bottom: 8px; line-height: 2.2; white-space: normal; }
+  .ann-line.legend .t { line-height: 1.2; }
+  .ann-line.legend .ann-label { display: none; }
+  .ann-line.legend .seg { white-space: normal; }
+  .ann-line.legend .seg[data-n]::before { content: attr(data-n); font: 600 9.5px/1 var(--sans); color: var(--blue); vertical-align: super; margin-right: 1px; }
+  .ann-line.legend .seg.bad[data-n]::before { color: var(--red); }
+  ol.ann-legend { list-style: none; margin: 0; padding: 0; counter-reset: ann; display: flex; flex-direction: column; gap: 2px; font: 12px/1.35 var(--sans); color: var(--blue); }
+  ol.ann-legend li { counter-increment: ann; display: grid; grid-template-columns: 18px 1fr; }
+  ol.ann-legend li::before { content: counter(ann); font: 600 10px/1.6 var(--sans); }
+  ol.ann-legend li.bad { color: var(--red); }
+  .ann-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font: 10.5px var(--mono); color: var(--muted); }
+
+  /* COMPONENT: dimension line above an annotated line ("13 words, limit 20") */
+  .measure { display: flex; align-items: center; gap: 8px; height: 11px; margin-bottom: 8px; font: 10.5px/1 var(--mono); color: var(--muted);
+    border-left: 1px solid var(--muted); border-right: 1px solid var(--muted); }
+  .measure::before, .measure::after { content: ""; flex: 1; height: 1px; background: var(--muted); }
+
+  /* COMPONENT: tables (status table, dictionary table). Add .stack-sm and data-label on each td
+     to turn rows into stacked cards on phones. */
+  .table-wrap { overflow-x: auto; margin: 0 -18px; }
+  table.sheet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sheet-table th { text-align: left; font: 400 10.5px/1.3 var(--mono); color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--hair); }
+  .sheet-table td { padding: 7px 10px; vertical-align: top; }
+  .sheet-table th:first-child, .sheet-table td:first-child { padding-left: 18px; }
+  .sheet-table th:last-child, .sheet-table td:last-child { padding-right: 18px; }
+  .sheet-table tbody tr:nth-child(odd) { background: var(--zebra); }
+  .sheet-table code { font: 12.5px var(--mono); white-space: nowrap; }
+  .status { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 12.5px; }
+  .status svg { width: 15px; height: 15px; fill: currentColor; flex: none; }
+  .status.ok { color: var(--blue); }
+  .status.no { color: var(--red); }
+
+  /* COMPONENT: limit gauge (track, fill, max marker, tick scale) */
+  .gauges { display: flex; flex-direction: column; gap: 14px; }
+  .gauge-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 5px; }
+  .gauge-head .v { font: 11.5px var(--mono); color: var(--blue); white-space: nowrap; }
+  .gauge-track { position: relative; height: 12px; background: var(--tint); border: 1px solid var(--hair); }
+  .gauge-fill { position: absolute; left: 0; top: -1px; bottom: -1px; width: calc(var(--value) / var(--max) * 100%); background: var(--blue-tint); border: 1px solid var(--blue-mid); }
+  .gauge-fill::after { content: ""; position: absolute; right: -1.5px; top: -4px; bottom: -4px; width: 2px; background: var(--blue); }
+  .gauge.bad .gauge-fill { background: var(--red-tint); border-color: var(--red); }
+  .gauge.bad .gauge-fill::after { background: var(--red); }
+  .gauge-ticks { display: flex; justify-content: space-between; margin-top: 4px; font: 9.5px/1 var(--mono); color: var(--muted); }
+  .gauge-ticks span { width: 0; display: flex; justify-content: center; }
+  .gauge-ticks span:first-child { justify-content: flex-start; }
+  .gauge-ticks span:last-child { justify-content: flex-end; }
+
+  /* COMPONENT: numbered procedure (one instruction in each step) */
+  ol.procedure { list-style: none; margin: 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+  ol.procedure li { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; }
+  ol.procedure li::before { content: counter(step); font: 500 11px/18px var(--mono); text-align: center; border: 1px solid var(--ink); height: 20px; }
+
+  /* COMPONENT: square-bullet rule list */
+  ul.rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  ul.rules li { position: relative; padding-left: 16px; }
+  ul.rules li::before { content: ""; position: absolute; left: 1px; top: 6px; width: 6px; height: 6px; background: var(--ink); }
+
+  /* COMPONENT: timeline (year, node, caption) */
+  .timeline { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); position: relative; }
+  .timeline::before { content: ""; position: absolute; top: 31px; height: 1px; background: var(--ink); left: calc(100% / var(--n, 4) / 2 - 18px); right: calc(100% / var(--n, 4) / 2 - 18px); }
+  .timeline li { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 6px; min-width: 0; }
+  .timeline .year { font: 500 15px/1 var(--sans); height: 22px; }
+  .timeline .node { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); position: relative; z-index: 1; margin: 3px 0 9px; }
+  .timeline .what { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+
+  /* COMPONENT: title block (bottom right of the sheet) */
+  .titleblock { border: 1.5px solid var(--ink); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--ink); }
+  .tb { grid-column: span 2; padding: 6px 10px 8px; background: var(--paper); min-width: 0; }
+  .tb-title, .tb-wide { grid-column: 1 / -1; }
+  .tb-3 { grid-column: span 3; }
+  .tb-1 { grid-column: span 1; }
+  .tb .k { display: block; font: 10px/1.3 var(--mono); color: var(--muted); }
+  .tb .v { display: block; font: 500 14px/1.3 var(--sans); overflow-wrap: anywhere; }
+  .tb-title .v { font: 600 18px/1.25 var(--sans); }
+
+  /* Tablet: two columns, the title block stays at the right */
+  @media screen and (max-width: 1180px) {
+    .panels { grid-auto-flow: row dense; }
+    .span-3, .span-4, .span-5 { grid-column: span 6; }
+    .span-6, .span-7, .span-8, .span-9 { grid-column: span 12; }
+    .panels > .stack:last-child { grid-column: 7 / -1; }
+    .tree-list .k { display: block; white-space: normal; overflow-wrap: anywhere; }
+  }
+  /* Phone: one column */
+  @media screen and (max-width: 760px) {
+    :root { --gap: 14px; }
+    .panels > *, .panels > .stack:last-child { grid-column: 1 / -1; }
+    .sheet { padding: 8px; }
+    .frame { grid-template-columns: 6px minmax(0, 1fr) 6px; grid-template-rows: 6px auto 6px; }
+    .zones span { font-size: 0; }
+    .zones span::before { display: none; }
+    .content { padding: 12px; }
+    .panel-body { padding: 14px; }
+    .table-wrap { margin: 0 -14px; }
+    .sheet-table th:first-child, .sheet-table td:first-child { padding-left: 14px; }
+    .sheet-table.stack-sm thead { display: none; }
+    .sheet-table.stack-sm, .sheet-table.stack-sm tbody, .sheet-table.stack-sm tr, .sheet-table.stack-sm td { display: block; width: 100%; }
+    .sheet-table.stack-sm tr { padding: 8px 14px; }
+    .sheet-table.stack-sm td, .sheet-table.stack-sm td:first-child, .sheet-table.stack-sm td:last-child { padding: 2px 0; }
+    .sheet-table.stack-sm td[data-label]::before { content: attr(data-label); display: block; font: 10px/1.4 var(--mono); color: var(--muted); }
+    .sheet-table.stack-sm code { white-space: normal; overflow-wrap: anywhere; }
+    .ann-line { font-size: 13px; }
+    .timeline { grid-template-columns: 1fr; gap: 10px; }
+    .timeline::before { left: 5.5px; right: auto; top: 6px; bottom: 6px; width: 1px; height: auto; }
+    .timeline li { display: grid; grid-template-columns: 12px 52px 1fr; align-items: start; gap: 10px; text-align: left; padding: 0; }
+    .timeline .node { grid-column: 1; grid-row: 1; margin: 2px 0 0; }
+    .timeline .year { grid-column: 2; grid-row: 1; height: auto; }
+    .timeline .what { grid-column: 3; grid-row: 1; }
+  }
+  @media screen and (max-width: 680px) {
+    p { text-align: left; hyphens: manual; }
+  }
+  /* Print: one landscape sheet with the line work kept. A4 by default (fits a desk printer, small
+     type); <html data-paper="a3"> gives a one-page A3 sheet with readable type for pinning up. */
+  @page { size: A4 landscape; margin: 20mm; }
+  @page a3 { size: A3 landscape; margin: 20mm; }
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; }
+    html[data-paper="a3"] body { page: a3; }
+    .sheet { padding: 0; zoom: 0.56; }
+    html[data-paper="a3"] .sheet { zoom: 0.83; }
+    .panel-meta, .caption, .zones, .gauge-ticks, .tb .k, .sheet-table th, .ann-meta, .measure,
+    .d, .tree-list small, .tree-list .k, .callout small, .sev, ol.ann-legend li::before, .ann-label,
+    ol.ann-legend, .timeline .what, .status { font-size: 13px; }
+    .panel, .titleblock, table { break-inside: avoid; }
+  }
+  /* Sheet-specific components: flow diagram, three-column steps, timeline exit gates */
+  .diagram { display: block; width: 100%; height: auto; font: 14px var(--sans); }
+  .diagram .box { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+  .diagram .box.new { fill: var(--blue-tint); }
+  .diagram text { fill: var(--ink); }
+  .diagram .b { font-weight: 600; font-size: 15px; }
+  .diagram .m { font: 12.5px var(--mono); }
+  .diagram .mu { fill: var(--ink-2); font-size: 13px; }
+  .diagram .rule { stroke: var(--ink-2); stroke-width: 1; }
+  .diagram .dot { fill: var(--ink-2); }
+  .diagram .flow { stroke: var(--blue); stroke-width: 1.5; fill: none; }
+  .diagram .old { stroke: var(--ink-2); stroke-width: 1.5; fill: none; stroke-dasharray: 6 4; }
+  .diagram .err { stroke: var(--red); stroke-width: 1.5; fill: none; }
+  .diagram .lbl { fill: var(--blue); font-size: 13.5px; }
+  .diagram .lbl.o { fill: var(--ink-2); }
+  .diagram .lbl.e { fill: var(--red); }
+  .diagram .ah-blue { fill: var(--blue); }
+  .diagram .ah-ink { fill: var(--ink-2); }
+  .diagram .ah-red { fill: var(--red); }
+  .diagram .num circle { fill: var(--paper); stroke: var(--blue); stroke-width: 1.5; }
+  .diagram .num text { fill: var(--blue); font: 600 12px var(--sans); text-anchor: middle; }
+  .diagram .num.o circle { stroke: var(--ink-2); }
+  .diagram .num.o text { fill: var(--ink-2); }
+  .diagram .tag rect { fill: var(--red-tint); stroke: var(--red); stroke-width: 1; }
+  .diagram .tag text { fill: var(--red); font: 600 11.5px var(--mono); text-anchor: middle; }
+  .svg-scroll { overflow-x: auto; }
+  .phone-only { display: none; }
+  ol.procedure.cols-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 20px; font-size: 13px; }
+  .timeline .what b { display: block; font-weight: 600; color: var(--ink); }
+  .timeline .exit { display: block; margin-top: 4px; font: 10.5px/1.3 var(--mono); color: var(--muted); }
+  .status.na { color: var(--muted); }
+  .sheet-table .sev { margin: 0 6px 3px 4px; }
+  .sheet-table td b { font-weight: 600; }
+  .risks b.rn { display: inline; }
+  .risks td:first-child { width: 27%; }
+  .risks td:nth-child(3), .risks td:nth-child(4) { white-space: nowrap; }
+  @media screen and (max-width: 1180px) {
+    .panels > .wide-tab { grid-column: 1 / -1; }
+    .panels > .stack.tb-row, .panels > .stack.tb-row:last-child { grid-column: 1 / -1; flex-direction: row; }
+    .stack.tb-row > * { flex: 1 1 0; min-width: 0; }
+  }
+  @media screen and (max-width: 760px) {
+    .stack.tb-row, .panels > .stack.tb-row:last-child { flex-direction: column; }
+    .risks td:nth-child(3), .risks td:nth-child(4) { white-space: normal; }
+    .risks td:first-child { width: 100%; }
+  }
+  .tb-stack { justify-content: flex-end; }
+  @media screen and (max-width: 760px) {
+    .svg-scroll .diagram { min-width: 760px; }
+    .phone-only { display: block; }
+    ol.procedure.cols-3 { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .timeline .exit, ol.procedure.cols-3 { font-size: 13px; }
+  }
+  /* Two sheets: a gap between them on screen, a page break between them in print */
+  .sheet + .sheet { padding-top: 0; }
+  @media print { .sheet + .sheet { break-before: page; } }
+  .split-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 28px; align-items: start; }
+  .split-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .split-2 > .table-wrap { margin: 0 -18px 0 0; }
+  @media screen and (max-width: 760px) {
+    .split-2 { grid-template-columns: 1fr; }
+    .split-2 > .table-wrap { margin: 0 -14px; }
+  }
+</style>
+</head>
+<body>
+<!-- Icon sprite: Material Symbols "check" and "close" paths. Use <svg><use href="#i-ok"/></svg>. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></symbol>
+  <symbol id="i-no" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+</svg>
+
+<main>
+<!-- SHEET 1 OF 2: decision, design, risks -->
+<div class="sheet">
+<div class="frame">
+  <div class="zones zones-top" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+  <div class="zones zones-left" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+  <div class="zones zones-right" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+
+  <div class="content">
+  <div class="panels">
+
+    <!-- Panel A: bottom line -->
+    <section class="panel span-4 wide-tab" aria-labelledby="pa">
+      <div class="panel-head"><div class="panel-id">A</div><h2 class="panel-title" id="pa">Bottom line</h2><div class="panel-meta">my assessment</div></div>
+      <div class="panel-body">
+        <p><b>Verdict.</b> Approve phase 0 with conditions. Phase 0 also changes the live cron job and the primary database, but its row in the rollout table names only the new parts (5).</p>
+        <div class="sub">Get these answers first:</div>
+        <ol class="procedure">
+          <li><span>Make sure that <code>notifier</code> writes no Redis keys while sends are disabled (R1).</span></li>
+          <li><span>Find the <code>wal_level</code> and the free disk of the primary. A change to <code>logical</code> needs a restart.</span></li>
+          <li><span>Make sure that the orders team accepts the Kafka pager from week 1 (9).</span></li>
+          <li><span>Ask if Kafka Connect is a current cluster (4.1) or a new cost (7).</span></li>
+        </ol>
+        <div class="callout warning"><span class="sev warning">Warning</span>Fix the key order before phase 2. <code>notifier</code> writes the key before the send, so a crash loses the notification. Section 3.2 calls that not acceptable (R2).</div>
+        <div class="callout"><small>For standup</small>"I approve phase 0 with conditions. The shadow notifier writes no Redis keys, the slot alert has an owner, and the primary has disk room and wal_level set to logical. Before phase 2, notifier must write the key after the send."</div>
+      </div>
+    </section>
+
+    <!-- Panel B: what it proposes, with the flow diagram -->
+    <section class="panel span-8" aria-labelledby="pb">
+      <div class="panel-head"><div class="panel-id">B</div><h2 class="panel-title" id="pb">What the plan builds</h2><div class="panel-meta">plan.md sections 2 to 5</div></div>
+      <div class="panel-body">
+        <p><b>What it proposes.</b> Replace the 5-minute cron poll with change data capture. Debezium streams each change to <code>orders</code> into Kafka. A new Go service, <code>notifier</code>, sends the notifications (1, 4). The plan rejects an outbox for now because it touches all 14 write paths. It rejects LISTEN/NOTIFY because it is not durable (3).</p>
+        <div class="svg-scroll">
+        <svg class="diagram" viewBox="0 0 900 278" role="img" aria-labelledby="flow-t">
+          <title id="flow-t">Order change flow: Postgres WAL to Debezium, Kafka, notifier, Redis and the providers, with the cron path beside it</title>
+          <defs>
+            <marker id="ah-b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-blue" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="ah-i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-ink" d="M0 0 L10 5 L0 10 z"/></marker>
+            <marker id="ah-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah-red" d="M0 0 L10 5 L0 10 z"/></marker>
+          </defs>
+
+          <!-- top row: orders, Debezium, topic -->
+          <rect class="box" x="8" y="34" width="170" height="70"/>
+          <text class="b" x="93" y="57" text-anchor="middle">orders table</text>
+          <text class="mu" x="93" y="75" text-anchor="middle">Postgres primary</text>
+          <text class="m" x="93" y="93" text-anchor="middle">slot debezium_orders</text>
+          <g class="tag"><rect x="148" y="9" width="30" height="18"/><text x="163" y="22">R3</text></g>
+
+          <line class="flow" x1="178" y1="69" x2="241" y2="69" marker-end="url(#ah-b)"/>
+          <g class="num"><circle cx="210" cy="52" r="9"/><text x="210" y="56">1</text></g>
+          <text class="lbl" x="210" y="89" text-anchor="middle">WAL</text>
+
+          <rect class="box new" x="243" y="34" width="150" height="70"/>
+          <text class="b" x="318" y="57" text-anchor="middle">Debezium</text>
+          <text class="m" x="318" y="75" text-anchor="middle">orders-cdc</text>
+          <text class="mu" x="318" y="93" text-anchor="middle">Kafka Connect</text>
+
+          <line class="flow" x1="393" y1="69" x2="456" y2="69" marker-end="url(#ah-b)"/>
+          <g class="num"><circle cx="425" cy="52" r="9"/><text x="425" y="56">2</text></g>
+          <text class="lbl" x="425" y="89" text-anchor="middle">events</text>
+
+          <rect class="box new" x="458" y="34" width="160" height="70"/>
+          <text class="b" x="538" y="57" text-anchor="middle">Kafka topic</text>
+          <text class="m" x="538" y="75" text-anchor="middle">orders.status.v1</text>
+          <text class="mu" x="538" y="93" text-anchor="middle">12 partitions, 7 days</text>
+
+          <line class="flow" x1="618" y1="69" x2="676" y2="69" marker-end="url(#ah-b)"/>
+          <g class="num"><circle cx="648" cy="52" r="9"/><text x="648" y="56">3</text></g>
+          <text class="lbl" x="648" y="89" text-anchor="middle">events</text>
+
+          <!-- notifier with its steps -->
+          <rect class="box new" x="678" y="6" width="214" height="170"/>
+          <text x="690" y="27"><tspan class="b">notifier</tspan><tspan class="mu" dx="8">Go, 3 replicas</tspan></text>
+          <line class="rule" x1="678" y1="38" x2="892" y2="38"/>
+          <rect class="dot" x="689" y="52" width="6" height="6"/>
+          <text x="704" y="59">Filter to the 4 statuses</text>
+          <rect class="dot" x="689" y="74" width="6" height="6"/>
+          <text x="704" y="81">Build the key</text>
+          <text class="m" x="704" y="98">order_id:status:version</text>
+          <g class="num"><circle cx="692" cy="116" r="9"/><text x="692" y="120">4</text></g>
+          <text x="706" y="121">SET NX in Redis, or skip</text>
+          <g class="num"><circle cx="692" cy="138" r="9"/><text x="692" y="142">5</text></g>
+          <text x="706" y="143">Call the provider</text>
+          <g class="tag"><rect x="854" y="129" width="30" height="18"/><text x="869" y="142">R2</text></g>
+          <rect class="dot" x="689" y="158" width="6" height="6"/>
+          <text x="704" y="165">Commit the offset</text>
+
+          <!-- error path to the DLQ -->
+          <line class="err" x1="678" y1="153" x2="435" y2="153" marker-end="url(#ah-r)"/>
+          <text class="lbl e" x="556" y="145" text-anchor="middle">after 5 failed tries</text>
+          <rect class="box new" x="243" y="124" width="190" height="46"/>
+          <text class="b" x="338" y="143" text-anchor="middle">Dead-letter topic</text>
+          <text class="m" x="338" y="162" text-anchor="middle">orders.status.dlq.v1</text>
+
+          <!-- notifier to Redis and to the providers -->
+          <path class="flow" d="M712 176 V226 H620" marker-end="url(#ah-b)"/>
+          <text class="lbl" x="720" y="201">key</text>
+          <line class="flow" x1="830" y1="176" x2="830" y2="196" marker-end="url(#ah-b)"/>
+          <text class="lbl" x="838" y="193">send</text>
+
+          <!-- bottom row: cron, Redis, providers -->
+          <rect class="box" x="8" y="198" width="170" height="54"/>
+          <g class="num o"><circle cx="24" cy="216" r="9"/><text x="24" y="220">6</text></g>
+          <text x="38" y="221"><tspan class="b">cron</tspan><tspan class="mu" dx="6">every 5 minutes</tspan></text>
+          <text class="m" x="38" y="241">notify_orders</text>
+
+          <rect class="box" x="458" y="198" width="160" height="54"/>
+          <text class="b" x="538" y="221" text-anchor="middle">Redis</text>
+          <text class="mu" x="538" y="241" text-anchor="middle">keys, TTL 72 h</text>
+
+          <rect class="box" x="740" y="198" width="152" height="54"/>
+          <text class="b" x="816" y="221" text-anchor="middle">Providers</text>
+          <text class="mu" x="816" y="241" text-anchor="middle">SendGrid, Twilio, FCM</text>
+
+          <!-- cron path (deleted in phase 5) -->
+          <line class="old" x1="60" y1="198" x2="60" y2="106" marker-end="url(#ah-i)"/>
+          <text class="lbl o" x="68" y="158">polls</text>
+          <line class="old" x1="178" y1="226" x2="456" y2="226" marker-end="url(#ah-i)"/>
+          <text class="lbl o" x="300" y="218" text-anchor="middle">reads the same keys from phase 0</text>
+          <g class="tag"><rect x="414" y="203" width="30" height="18"/><text x="429" y="216">R1</text></g>
+          <path class="old" d="M98 252 V272 H816 V254" marker-end="url(#ah-i)"/>
+          <text class="lbl o" x="318" y="264" text-anchor="middle">sends for merchants with the flag off</text>
+        </svg>
+        </div>
+        <div class="caption phone-only">Scroll sideways to see the whole flow.</div>
+        <ol class="procedure cols-3">
+          <li><span>Each change to <code>orders</code> goes into the WAL. The slot keeps it for Debezium.</span></li>
+          <li><span>Debezium publishes one event for each change, keyed by <code>order_id</code>.</span></li>
+          <li><span><code>notifier</code> keeps the 4 notifiable statuses and builds the key.</span></li>
+          <li><span><code>SET NX</code> writes the key for 72 h. If the key exists, <code>notifier</code> skips.</span></li>
+          <li><span><code>notifier</code> calls the provider, then commits the offset. After 5 failures, the event goes to the DLQ.</span></li>
+          <li><span>cron polls until phase 4. From phase 0, it reads the same Redis keys.</span></li>
+        </ol>
+        <div class="caption">Blue fill: new parts. Dashed lines: the cron path, which phase 5 deletes. R1 to R3: rows in panel C.</div>
+      </div>
+    </section>
+
+    <!-- Panel C: risk table (gaps found by checking the plan against itself) -->
+    <section class="panel span-9" aria-labelledby="pc">
+      <div class="panel-head"><div class="panel-id">C</div><h2 class="panel-title" id="pc">What could go wrong</h2><div class="panel-meta">my assessment, with plan sections</div></div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table class="sheet-table stack-sm risks">
+            <thead><tr><th>Risk</th><th>What happens</th><th>Sections</th><th>Fix by</th></tr></thead>
+            <tbody>
+              <tr><td data-label="Risk"><code>R1</code> <span class="sev warning">Warning</span><b class="rn">Shared keys in shadow mode</b></td><td data-label="What happens">If <code>notifier</code> writes keys with sends disabled, cron finds them and skips the real send. Not stated in the source.</td><td data-label="Sections">4.3, 5</td><td data-label="Fix by">Phase 0</td></tr>
+              <tr><td data-label="Risk"><code>R2</code> <span class="sev warning">Warning</span><b class="rn">Key before send</b></td><td data-label="What happens"><code>notifier</code> writes the key before the provider call. A replay after a crash finds the key and skips the event.</td><td data-label="Sections">3.2, 4.3</td><td data-label="Fix by">Phase 2</td></tr>
+              <tr><td data-label="Risk"><code>R3</code> <span class="sev caution">Caution</span><b class="rn">Slot cap loses events</b></td><td data-label="What happens">At 50 GB, Postgres removes WAL that the slot needs, so Debezium cannot continue. A failover also loses the slot, except on PostgreSQL 17 or later with slot sync enabled.</td><td data-label="Sections">8</td><td data-label="Fix by">Phase 2</td></tr>
+              <tr><td data-label="Risk"><code>R4</code> <span class="sev caution">Caution</span><b class="rn">Flag only in cron</b></td><td data-label="What happens">If <code>notifier</code> does not skip merchants with the flag off, the 10% step reaches every merchant. Not stated in the source.</td><td data-label="Sections">5, 6</td><td data-label="Fix by">Phase 2</td></tr>
+              <tr><td data-label="Risk"><code>R5</code> <span class="sev caution">Caution</span><b class="rn">Rollback does not resend</b></td><td data-label="What happens">After a rollback, cron reads only rows that changed after its last run. What <code>notifier</code> missed stays missed.</td><td data-label="Sections">2, 6</td><td data-label="Fix by">Phase 2</td></tr>
+              <tr><td data-label="Risk"><code>R6</code> <span class="sev caution">Caution</span><b class="rn">Key lives shorter than events</b></td><td data-label="What happens">A key lives 72 h. Kafka keeps events for 7 days. A replay of events older than 72 h sends them again.</td><td data-label="Sections">4.2, 4.3</td><td data-label="Fix by">Phase 2</td></tr>
+              <tr><td data-label="Risk"><code>R7</code> <span class="sev caution">Caution</span><b class="rn">Status change or other edit</b></td><td data-label="What happens">If <code>version</code> increases on every row update, any edit of a shipped order sends "shipped" again. The source does not define <code>version</code>.</td><td data-label="Sections">3.3, 4.3</td><td data-label="Fix by">Phase 1</td></tr>
+              <tr><td data-label="Risk"><code>R8</code> <span class="sev caution">Caution</span><b class="rn">SMS bursts</b></td><td data-label="What happens">Twilio takes 100 messages a second. A burst can cause errors and DLQ moves. A DLQ replay then arrives out of order (4.5).</td><td data-label="Sections">4.5, 8, 9</td><td data-label="Fix by">Phase 2</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right column: what the plan covers, stacked on the title block -->
+    <div class="stack span-3 tb-row">
+      <section class="panel" aria-labelledby="pd">
+        <div class="panel-head"><div class="panel-id">D</div><h2 class="panel-title" id="pd">Already covered</h2><div class="panel-meta">sections 5, 6, 8</div></div>
+        <div class="panel-body">
+          <ul class="rules">
+            <li><b>Slot growth.</b> Alert at 20 GB, cap at 50 GB. The disk stays safe (R3).</li>
+            <li><b>Schema changes.</b> A CI check on captured columns. No phase has this work.</li>
+            <li><b>Duplicates in cutover.</b> Shared Redis keys (R1, R6).</li>
+            <li><b>Provider outages.</b> 5 retries, then the DLQ (R2, R8).</li>
+            <li><b>Rollback.</b> One flag change until phase 5 (R4, R5).</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Title block, sheet 1. The h1 text is also the page <title>. -->
+      <div class="titleblock">
+        <div class="tb tb-title"><span class="k">Title</span><h1 class="v">Notification migration review</h1></div>
+        <div class="tb"><span class="k">Document</span><span class="v">plan.md v2, by the coding agent</span></div>
+        <div class="tb"><span class="k">Facts as of</span><span class="v">2026-10-03</span></div>
+        <div class="tb"><span class="k">Other source</span><span class="v">PostgreSQL docs</span></div>
+        <div class="tb"><span class="k">Sheet</span><span class="v">1 of 2</span></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <div class="zones zones-bottom" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+</div>
+</div>
+
+<!-- SHEET 2 OF 2: phase 0 scope, rollout, numbers -->
+<div class="sheet">
+<div class="frame">
+  <div class="zones zones-top" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+  <div class="zones zones-left" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+  <div class="zones zones-right" aria-hidden="true"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+
+  <div class="content">
+  <div class="panels">
+
+    <!-- Panel E: phase 0 scope -->
+    <section class="panel span-6" aria-labelledby="pe0">
+      <div class="panel-head"><div class="panel-id">E</div><h2 class="panel-title" id="pe0">What phase 0 touches</h2><div class="panel-meta">plan.md sections 4, 5, 7, 8, 9</div></div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table class="sheet-table stack-sm">
+            <thead><tr><th>Item</th><th>Section</th><th>In the phase 0 row</th></tr></thead>
+            <tbody>
+              <tr><td data-label="Item">Topic, connector and slot, <code>notifier</code> with sends disabled</td><td data-label="Section">4.1 to 4.3</td><td data-label="In the phase 0 row"><span class="status ok"><svg><use href="#i-ok"/></svg>Listed</span></td></tr>
+              <tr><td data-label="Item">Redis key check in the live cron job</td><td data-label="Section">5</td><td data-label="In the phase 0 row"><span class="status no"><svg><use href="#i-no"/></svg>Not listed</span></td></tr>
+              <tr><td data-label="Item">Slot alert at 20 GB, cap at 50 GB</td><td data-label="Section">8</td><td data-label="In the phase 0 row"><span class="status no"><svg><use href="#i-no"/></svg>No phase</span></td></tr>
+              <tr><td data-label="Item">CI check for captured columns</td><td data-label="Section">8</td><td data-label="In the phase 0 row"><span class="status no"><svg><use href="#i-no"/></svg>No phase</span></td></tr>
+              <tr><td data-label="Item">Kafka Connect: current cluster or new cost</td><td data-label="Section">4.1, 7</td><td data-label="In the phase 0 row"><span class="status no"><svg><use href="#i-no"/></svg>Conflict</span></td></tr>
+              <tr><td data-label="Item">Kafka pager with the orders team</td><td data-label="Section">9, 10</td><td data-label="In the phase 0 row"><span class="status no"><svg><use href="#i-no"/></svg>Due phase 2</span></td></tr>
+              <tr><td data-label="Item"><code>wal_level = logical</code> and free disk</td><td data-label="Section" class="muted">Not stated in the source</td><td data-label="In the phase 0 row"><span class="status na">Unknown</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <hr class="hair flush">
+      <div class="panel-note"><p>The cron change is the only phase 0 change that reaches customers. The phase 0 gate measures only connector lag (5). The cron change should also stop the duplicate sends of INC-2291, INC-2304 and INC-2342 by itself (2).</p></div>
+    </section>
+
+    <!-- Panel F: rollout timeline with gates -->
+    <section class="panel span-6" aria-labelledby="pf0">
+      <div class="panel-head"><div class="panel-id">F</div><h2 class="panel-title" id="pf0">Rollout and gates</h2><div class="panel-meta">plan.md sections 5, 10</div></div>
+      <div class="panel-body">
+        <ol class="timeline" style="--n:6">
+          <li><span class="year">P0</span><span class="node"></span><span class="what"><b>Week 1</b>Topic, connector, notifier with no sends<span class="exit">gate: lag under 5 s, 3 days</span></span></li>
+          <li><span class="year">P1</span><span class="node"></span><span class="what"><b>Weeks 2, 3</b>Shadow mode, diff with cron<span class="exit">gate: 99.9% match, 7 days</span></span></li>
+          <li><span class="year">P2</span><span class="node"></span><span class="what"><b>Week 4</b>Flag on, 10% of merchants<span class="exit">gate: no rise in tickets</span></span></li>
+          <li><span class="year">P3</span><span class="node"></span><span class="what"><b>Week 5</b>Flag on, 50%<span class="exit">gate: p95 under 10 s</span></span></li>
+          <li><span class="year">P4</span><span class="node"></span><span class="what"><b>Week 6</b>Flag on, 100%, cron disabled<span class="exit">gate: 7 days, no rollback</span></span></li>
+          <li><span class="year">P5</span><span class="node"></span><span class="what"><b>Week 8</b>Delete cron and its state table<span class="exit">no gate</span></span></li>
+        </ol>
+        <hr class="hair">
+        <div class="sub">Open questions (9). Section 10 says that they should close before phase 2:</div>
+        <ul class="rules">
+          <li><b>Kafka on-call.</b> The platform team does not own it yet. Until it agrees, the orders team holds the pager.</li>
+          <li><b>SMS rate.</b> A limiter in <code>notifier</code> or a higher Twilio limit. Not decided, and no owner named.</li>
+        </ul>
+      </div>
+      <hr class="hair flush">
+      <div class="panel-note"><p>The 99.9% gate lets approximately 1,200 notifications a day differ (1, 5, calc.). Cron sees only the status at each run, but <code>notifier</code> sees each change. The plan does not say how the diff counts this. The phase 2 gate has no number.</p></div>
+    </section>
+
+    <!-- Panel G: numbers -->
+    <section class="panel span-9" aria-labelledby="pg">
+      <div class="panel-head"><div class="panel-id">G</div><h2 class="panel-title" id="pg">Numbers it depends on</h2><div class="panel-meta">plan.md, calc. = my calculation</div></div>
+      <div class="panel-body split-2">
+        <div class="split-col">
+          <div class="gauges">
+            <div class="gauge" style="--value:168; --max:168">
+              <div class="gauge-head"><span>Kafka keeps events (4.2)</span><span class="v">168 h, 7 days</span></div>
+              <div class="gauge-track"><div class="gauge-fill"></div></div>
+            </div>
+            <div class="gauge bad" style="--value:72; --max:168">
+              <div class="gauge-head"><span>Redis keeps a key (4.3)</span><span class="v">72 h</span></div>
+              <div class="gauge-track"><div class="gauge-fill"></div></div>
+              <div class="gauge-ticks"><span>0</span><span>24</span><span>48</span><span>72</span><span>96</span><span>120</span><span>144</span><span>168</span></div>
+            </div>
+          </div>
+          <div class="callout"><span class="sev note">Note</span>A replay of an event older than 72 h passes the key check and sends again (R6).</div>
+          <p>During the wait for the upgrade, the net saving is approximately $700 a month (calc.). The plan does not say how much CPU logical decoding adds on the primary.</p>
+        </div>
+        <div class="table-wrap">
+          <table class="sheet-table stack-sm">
+            <thead><tr><th>Number</th><th>Value</th><th>Section</th></tr></thead>
+            <tbody>
+              <tr><td data-label="Number">p95 delay</td><td data-label="Value">280 s now, under 10 s target</td><td data-label="Section">1</td></tr>
+              <tr><td data-label="Number">Poll load</td><td data-label="Value">approximately 18% of primary CPU</td><td data-label="Section">1, 7</td></tr>
+              <tr><td data-label="Number">Notifications</td><td data-label="Value">approximately 1.2 million a day<span class="d">approximately 14 a second on average (calc.)</span></td><td data-label="Section">1</td></tr>
+              <tr><td data-label="Number">Twilio limit</td><td data-label="Value">100 messages a second</td><td data-label="Section">9</td></tr>
+              <tr><td data-label="Number">Kafka cost</td><td data-label="Value">approximately $1,400 a month more</td><td data-label="Section">7</td></tr>
+              <tr><td data-label="Number">Upgrade that waits</td><td data-label="Value">$2,100 a month, 2 quarters or more</td><td data-label="Section">7</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Title block, sheet 2 -->
+    <div class="stack span-3 tb-stack">
+      <div class="titleblock">
+        <div class="tb tb-title"><span class="k">Title</span><span class="v">Notification migration review</span></div>
+        <div class="tb"><span class="k">Document</span><span class="v">plan.md, v2</span></div>
+        <div class="tb"><span class="k">Plan date</span><span class="v">Not stated in the source</span></div>
+        <div class="tb"><span class="k">Facts as of</span><span class="v">2026-10-03</span></div>
+        <div class="tb"><span class="k">Sheet</span><span class="v">2 of 2</span></div>
+        <div class="tb tb-wide"><span class="k">Source</span><span class="v">plan.md sections 1 to 10</span></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <div class="zones zones-bottom" aria-hidden="true"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span></div>
+</div>
+</div>
+</main>
+<script>
+/* Annotated lines: when the segments wrap onto two lines, a label leaves the panel, or labels
+   collide, show the line with numbered brackets and list the labels below it. Keep this script. */
+(function () {
+  function overlap(a, b) { return a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1; }
+  function needsLegend(line) {
+    var ts = line.querySelectorAll('.seg > .t');
+    if (!ts.length) return false;
+    var top = ts[0].getBoundingClientRect().top;
+    for (var i = 1; i < ts.length; i++) if (Math.abs(ts[i].getBoundingClientRect().top - top) > 2) return true;
+    if (line.scrollWidth > line.clientWidth + 1) return true;
+    var box = (line.closest('.panel-body') || line.parentElement).getBoundingClientRect();
+    var labels = line.querySelectorAll('.ann-label'), rects = [];
+    for (var j = 0; j < labels.length; j++) {
+      var r = labels[j].getBoundingClientRect();
+      if (r.left < box.left - 1 || r.right > box.right + 1) return true;
+      for (var k = 0; k < rects.length; k++) if (overlap(r, rects[k])) return true;
+      rects.push(r);
+    }
+    var texts = line.querySelectorAll('.t');
+    for (var m = 0; m < rects.length; m++) for (var n = 0; n < texts.length; n++) if (overlap(rects[m], texts[n].getBoundingClientRect())) return true;
+    return false;
+  }
+  function layout() {
+    document.querySelectorAll('.ann-line').forEach(function (line) {
+      line.classList.remove('legend');
+      var next = line.nextElementSibling;
+      if (next && next.classList.contains('ann-legend')) next.remove();
+      line.querySelectorAll('.seg[data-n]').forEach(function (s) { s.removeAttribute('data-n'); });
+      if (!needsLegend(line)) return;
+      line.classList.add('legend');
+      var ol = document.createElement('ol'), n = 0;
+      ol.className = 'ann-legend';
+      line.querySelectorAll('.seg').forEach(function (seg) {
+        var label = seg.querySelector('.ann-label');
+        if (!label) return;
+        seg.setAttribute('data-n', ++n);
+        var li = document.createElement('li');
+        li.textContent = label.textContent;
+        if (seg.classList.contains('bad')) li.className = 'bad';
+        ol.appendChild(li);
+      });
+      line.after(ol);
+    });
+  }
+  var timer;
+  window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(layout, 60); });
+  window.addEventListener('beforeprint', layout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout); else window.addEventListener('load', layout);
+  layout();
+})();
+</script>
+</body>
+</html>

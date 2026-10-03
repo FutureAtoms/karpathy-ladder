@@ -1,0 +1,55 @@
+1
+00:00:00,600 --> 00:00:05,124
+Self-attention lets every word borrow meaning from the words around it.
+
+2
+00:00:05,224 --> 00:00:06,668
+Watch the word bank.
+
+3
+00:00:07,068 --> 00:00:11,519
+Three matrices, learned in training, give each word three vectors.
+
+4
+00:00:11,619 --> 00:00:13,870
+A query asks what the word needs.
+
+5
+00:00:13,970 --> 00:00:15,679
+A key says what it offers.
+
+6
+00:00:15,779 --> 00:00:17,733
+A value holds what it shares.
+
+7
+00:00:18,133 --> 00:00:21,368
+A dot product compares bank's query with each key.
+
+8
+00:00:21,468 --> 00:00:24,488
+Arrows that point the same way give a high score.
+
+9
+00:00:24,888 --> 00:00:28,473
+Then divide each score by the square root of the key size.
+
+10
+00:00:28,573 --> 00:00:31,965
+Softmax turns the scores into weights that total one.
+
+11
+00:00:32,365 --> 00:00:34,560
+Scale each value by its weight.
+
+12
+00:00:34,660 --> 00:00:36,837
+The sum is the new bank vector.
+
+13
+00:00:36,937 --> 00:00:40,989
+River has the most weight, so bank leans toward the river meaning.
+
+14
+00:00:41,389 --> 00:00:44,575
+Every word does this at once, in one formula.

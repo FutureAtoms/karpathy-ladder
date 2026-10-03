@@ -1,0 +1,657 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>OAuth 2.0 login with PKCE: Next.js, Auth0 and your API</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #fbfbf9;
+    --ink: #1b1d1f;
+    --ink-2: #3a3e43;
+    --muted: #6b7077;
+    --hair: #cfd2d6;
+    --tint: #f1f2f3;
+    --zebra: #f6f7f8;
+    --blue: #1f5fbf;
+    --blue-tint: #e7eef9;
+    --blue-mid: #a9c1e6;
+    --red: #c4302b;
+    --red-tint: #fbeceb;
+    --sans: "IBM Plex Sans Condensed", "Roboto Condensed", "Arial Narrow", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --gap: 22px;
+  }
+  @media screen and (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16181b; --ink: #e4e6e9; --ink-2: #c3c7cc; --muted: #969ba3; --hair: #3a3e44;
+      --tint: #22252a; --zebra: #1c1f23; --blue: #7aa7ec; --blue-tint: #1d2a3d; --blue-mid: #3f5f8f;
+      --red: #f07a73; --red-tint: #3a2120;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 14px/1.45 var(--sans); }
+  h1, h2, h3, p { margin: 0; text-wrap: normal; }
+  p { text-align: justify; hyphens: auto; }
+  code, .mono { font-family: var(--mono); hyphens: none; }
+  .muted { color: var(--muted); }
+  .d { display: block; font-size: 12px; color: var(--muted); }
+  .blue { color: var(--blue); }
+  .red { color: var(--red); }
+
+  /* COMPONENT: drawing frame with zone margins (1-8 across, A-D down) */
+  .sheet { padding: 16px; }
+  .frame { display: grid; grid-template-columns: 20px minmax(0, 1fr) 20px; grid-template-rows: 20px auto 20px; border: 1px solid var(--ink); }
+  .zones { display: grid; font: 11px/1 var(--mono); color: var(--ink-2); }
+  .zones span { display: grid; place-items: center; position: relative; }
+  .zones-top, .zones-bottom { grid-column: 2; grid-template-columns: repeat(8, 1fr); }
+  .zones-top { grid-row: 1; }
+  .zones-bottom { grid-row: 3; }
+  .zones-left, .zones-right { grid-row: 2; grid-template-rows: repeat(4, 1fr); }
+  .zones-left { grid-column: 1; }
+  .zones-right { grid-column: 3; }
+  .zones-top span + span::before, .zones-bottom span + span::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1px; background: var(--ink); }
+  .zones-left span + span::before, .zones-right span + span::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--ink); }
+  .content { grid-column: 2; grid-row: 2; border: 1px solid var(--ink); padding: var(--gap); min-width: 0; }
+  /* .frame.plain: no zone margins, for a working diagram that needs every pixel of width */
+  .frame.plain { grid-template-columns: 0 minmax(0, 1fr) 0; grid-template-rows: 0 auto 0; border: 0; }
+  .frame.plain .zones { display: none; }
+  .frame.plain .content { border: 0; padding: 0; }
+
+  /* Panel grid: 12 columns. Give each panel a span-N class; each row adds up to 12. */
+  .panels { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); align-items: stretch; }
+  .span-3 { grid-column: span 3; } .span-4 { grid-column: span 4; } .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; } .span-7 { grid-column: span 7; } .span-8 { grid-column: span 8; }
+  .span-9 { grid-column: span 9; } .span-12 { grid-column: span 12; }
+  .stack { display: flex; flex-direction: column; gap: var(--gap); min-width: 0; }
+  .stack > .panel { flex: 1; }
+
+  /* COMPONENT: panel with letter chip, title and meta label */
+  .panel { border: 1.5px solid var(--ink); background: var(--paper); display: flex; flex-direction: column; min-width: 0; }
+  .panel-head { display: flex; flex-wrap: wrap; align-items: stretch; border-bottom: 1px solid var(--ink); min-height: 32px; }
+  .panel-id { flex: 0 0 32px; display: grid; place-items: center; background: var(--ink); color: var(--paper); font: 600 15px/1 var(--sans); }
+  .panel-title { flex: 1 1 auto; min-width: 0; padding: 6px 12px; font: 600 16px/1.25 var(--sans); align-self: center; }
+  .panel-meta { flex: 0 1 auto; margin-left: auto; padding: 6px 12px; align-self: center; font: 10.5px/1.3 var(--mono); color: var(--muted); text-align: right; }
+  .panel-body { padding: 16px 18px; flex: 1; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .panel-note { padding: 10px 18px 12px; font-size: 12.5px; color: var(--muted); }
+  .panel-note p + p { margin-top: 4px; }
+  .sub { font: 500 13.5px/1.3 var(--sans); color: var(--ink); }
+  .caption { font: 10.5px/1.3 var(--mono); color: var(--muted); }
+  hr.hair { border: 0; height: 1px; background: var(--hair); margin: 2px 0; width: 100%; flex: none; }
+  hr.hair.flush { margin: 0; }
+
+  /* COMPONENT: structure tree (root box, branch boxes, item lists) */
+  .tree { display: flex; flex-direction: column; align-items: center; }
+  .tree-root { border: 1.5px solid var(--ink-2); background: var(--blue-tint); padding: 8px 28px; text-align: center; }
+  .tree-root b { display: block; font: 600 17px/1.2 var(--sans); }
+  .tree-root span { font-size: 12.5px; color: var(--ink-2); }
+  .tree-stem { width: 1px; height: 14px; background: var(--ink); }
+  .tree-branches { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 18px; width: 100%; position: relative; padding-top: 14px; }
+  .tree-branches::before { content: ""; position: absolute; top: 0; height: 1px; background: var(--ink); left: calc(100% / var(--n, 2) / 2); right: calc(100% / var(--n, 2) / 2); }
+  .tree-branch { position: relative; min-width: 0; }
+  .tree-branch::before { content: ""; position: absolute; top: -14px; left: 50%; width: 1px; height: 14px; background: var(--ink); }
+  .tree-node { border: 1.5px solid var(--ink-2); padding: 6px 10px; text-align: center; font: 600 14px/1.25 var(--sans); }
+  .tree-list { list-style: none; margin: 10px 0 0 14px; padding: 0 0 0 16px; position: relative; }
+  .tree-list::before { content: ""; position: absolute; left: 0; top: -10px; bottom: 9px; width: 1px; background: var(--ink-2); }
+  .tree-list li { position: relative; padding: 3px 0; font-size: 13.5px; }
+  .tree-list li::before { content: ""; position: absolute; left: -16px; top: 12px; width: 11px; height: 1px; background: var(--ink-2); }
+  .tree-list small { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.3; }
+  .tree-list .k { font: 10.5px var(--mono); color: var(--muted); margin-right: 6px; white-space: nowrap; }
+
+  /* COMPONENT: callouts and severity chips (WARNING = injury or data loss, CAUTION = damage or outage) */
+  .callout { background: var(--tint); border: 1px solid var(--hair); padding: 8px 12px; font-size: 13px; }
+  .callout small { display: block; color: var(--muted); font-size: 11.5px; }
+  .callout.warning { background: var(--red-tint); border-color: var(--red); }
+  .callout.caution { background: var(--tint); border-color: var(--ink-2); }
+  .sev { display: inline-block; font: 600 10.5px/1 var(--mono); letter-spacing: .04em; padding: 3px 6px; border: 1px solid currentColor; margin-right: 6px; vertical-align: 1px; }
+  .sev.warning { color: var(--red); background: var(--red-tint); }
+  .sev.caution { color: var(--ink); background: var(--tint); }
+  .sev.note { color: var(--blue); background: var(--blue-tint); }
+
+  /* COMPONENT: annotated line. Each .seg holds the annotated text (.t) and its .ann-label.
+     When the line wraps or labels collide, the script below switches it to a numbered legend. */
+  .ann-block { display: flex; flex-direction: column; gap: 6px; }
+  .ann-wrap { display: inline-flex; flex-direction: column; max-width: 100%; align-self: flex-start; }
+  .ann-line { font: 15px/1.2 var(--mono); padding-bottom: 46px; position: relative; overflow-wrap: anywhere; }
+  .seg { position: relative; display: inline-block; white-space: nowrap; }
+  .seg > .t { position: relative; display: inline-block; }
+  .seg > .t::after { content: ""; position: absolute; left: 1px; right: 1px; top: calc(100% + 3px); height: 5px; border: 1px solid var(--blue); border-top: 0; }
+  .seg.bad > .t::after { border-color: var(--red); }
+  .ann-label { position: absolute; top: calc(100% + 11px); left: 50%; transform: translateX(-50%); font: 11.5px/1.2 var(--sans); color: var(--blue); white-space: nowrap; }
+  .seg.bad .ann-label { color: var(--red); }
+  .ann-label.lane-2 { top: calc(100% + 27px); }
+  .ann-label.start { left: 0; transform: none; }
+  .ann-label.end { left: auto; right: 0; transform: none; }
+  .ann-line.legend { padding-bottom: 8px; line-height: 2.2; white-space: normal; }
+  .ann-line.legend .t { line-height: 1.2; }
+  .ann-line.legend .ann-label { display: none; }
+  .ann-line.legend .seg { white-space: normal; }
+  .ann-line.legend .seg[data-n]::before { content: attr(data-n); font: 600 9.5px/1 var(--sans); color: var(--blue); vertical-align: super; margin-right: 1px; }
+  .ann-line.legend .seg.bad[data-n]::before { color: var(--red); }
+  ol.ann-legend { list-style: none; margin: 0; padding: 0; counter-reset: ann; display: flex; flex-direction: column; gap: 2px; font: 12px/1.35 var(--sans); color: var(--blue); }
+  ol.ann-legend li { counter-increment: ann; display: grid; grid-template-columns: 18px 1fr; }
+  ol.ann-legend li::before { content: counter(ann); font: 600 10px/1.6 var(--sans); }
+  ol.ann-legend li.bad { color: var(--red); }
+  .ann-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; font: 10.5px var(--mono); color: var(--muted); }
+
+  /* COMPONENT: dimension line above an annotated line ("13 words, limit 20") */
+  .measure { display: flex; align-items: center; gap: 8px; height: 11px; margin-bottom: 8px; font: 10.5px/1 var(--mono); color: var(--muted);
+    border-left: 1px solid var(--muted); border-right: 1px solid var(--muted); }
+  .measure::before, .measure::after { content: ""; flex: 1; height: 1px; background: var(--muted); }
+
+  /* COMPONENT: tables (status table, dictionary table). Add .stack-sm and data-label on each td
+     to turn rows into stacked cards on phones. */
+  .table-wrap { overflow-x: auto; margin: 0 -18px; }
+  table.sheet-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .sheet-table th { text-align: left; font: 400 10.5px/1.3 var(--mono); color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--hair); }
+  .sheet-table td { padding: 7px 10px; vertical-align: top; }
+  .sheet-table th:first-child, .sheet-table td:first-child { padding-left: 18px; }
+  .sheet-table th:last-child, .sheet-table td:last-child { padding-right: 18px; }
+  .sheet-table tbody tr:nth-child(odd) { background: var(--zebra); }
+  .sheet-table code { font: 12.5px var(--mono); white-space: nowrap; }
+  .status { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 12.5px; }
+  .status svg { width: 15px; height: 15px; fill: currentColor; flex: none; }
+  .status.ok { color: var(--blue); }
+  .status.no { color: var(--red); }
+
+  /* COMPONENT: limit gauge (track, fill, max marker, tick scale) */
+  .gauges { display: flex; flex-direction: column; gap: 14px; }
+  .gauge-head { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; margin-bottom: 5px; }
+  .gauge-head .v { font: 11.5px var(--mono); color: var(--blue); white-space: nowrap; }
+  .gauge-track { position: relative; height: 12px; background: var(--tint); border: 1px solid var(--hair); }
+  .gauge-fill { position: absolute; left: 0; top: -1px; bottom: -1px; width: calc(var(--value) / var(--max) * 100%); background: var(--blue-tint); border: 1px solid var(--blue-mid); }
+  .gauge-fill::after { content: ""; position: absolute; right: -1.5px; top: -4px; bottom: -4px; width: 2px; background: var(--blue); }
+  .gauge.bad .gauge-fill { background: var(--red-tint); border-color: var(--red); }
+  .gauge.bad .gauge-fill::after { background: var(--red); }
+  .gauge-ticks { display: flex; justify-content: space-between; margin-top: 4px; font: 9.5px/1 var(--mono); color: var(--muted); }
+  .gauge-ticks span { width: 0; display: flex; justify-content: center; }
+  .gauge-ticks span:first-child { justify-content: flex-start; }
+  .gauge-ticks span:last-child { justify-content: flex-end; }
+
+  /* COMPONENT: numbered procedure (one instruction in each step) */
+  ol.procedure { list-style: none; margin: 0; padding: 0; counter-reset: step; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; }
+  ol.procedure li { counter-increment: step; display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; }
+  ol.procedure li::before { content: counter(step); font: 500 11px/18px var(--mono); text-align: center; border: 1px solid var(--ink); height: 20px; }
+
+  /* COMPONENT: square-bullet rule list */
+  ul.rules { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+  ul.rules li { position: relative; padding-left: 16px; }
+  ul.rules li::before { content: ""; position: absolute; left: 1px; top: 6px; width: 6px; height: 6px; background: var(--ink); }
+
+  /* COMPONENT: timeline (year, node, caption) */
+  .timeline { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0, 1fr)); position: relative; }
+  .timeline::before { content: ""; position: absolute; top: 31px; height: 1px; background: var(--ink); left: calc(100% / var(--n, 4) / 2 - 18px); right: calc(100% / var(--n, 4) / 2 - 18px); }
+  .timeline li { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 6px; min-width: 0; }
+  .timeline .year { font: 500 15px/1 var(--sans); height: 22px; }
+  .timeline .node { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--ink); background: var(--paper); position: relative; z-index: 1; margin: 3px 0 9px; }
+  .timeline .what { font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+
+  /* COMPONENT: title block (bottom right of the sheet) */
+  .titleblock { border: 1.5px solid var(--ink); display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--ink); }
+  .tb { grid-column: span 2; padding: 6px 10px 8px; background: var(--paper); min-width: 0; }
+  .tb-title, .tb-wide { grid-column: 1 / -1; }
+  .tb-3 { grid-column: span 3; }
+  .tb-1 { grid-column: span 1; }
+  .tb .k { display: block; font: 10px/1.3 var(--mono); color: var(--muted); }
+  .tb .v { display: block; font: 500 14px/1.3 var(--sans); overflow-wrap: anywhere; }
+  .tb-title .v { font: 600 18px/1.25 var(--sans); }
+
+  /* Tablet: two columns, the title block stays at the right */
+  @media screen and (max-width: 1180px) {
+    .panels { grid-auto-flow: row dense; }
+    .span-3, .span-4, .span-5 { grid-column: span 6; }
+    .span-6, .span-7, .span-8, .span-9 { grid-column: span 12; }
+    .panels > .stack:last-child { grid-column: 7 / -1; }
+    .tree-list .k { display: block; white-space: normal; overflow-wrap: anywhere; }
+  }
+  /* Phone: one column */
+  @media screen and (max-width: 760px) {
+    :root { --gap: 14px; }
+    .panels > *, .panels > .stack:last-child { grid-column: 1 / -1; }
+    .sheet { padding: 8px; }
+    .frame { grid-template-columns: 6px minmax(0, 1fr) 6px; grid-template-rows: 6px auto 6px; }
+    .zones span { font-size: 0; }
+    .zones span::before { display: none; }
+    .content { padding: 12px; }
+    .panel-body { padding: 14px; }
+    .table-wrap { margin: 0 -14px; }
+    .sheet-table th:first-child, .sheet-table td:first-child { padding-left: 14px; }
+    .sheet-table.stack-sm thead { display: none; }
+    .sheet-table.stack-sm, .sheet-table.stack-sm tbody, .sheet-table.stack-sm tr, .sheet-table.stack-sm td { display: block; width: 100%; }
+    .sheet-table.stack-sm tr { padding: 8px 14px; }
+    .sheet-table.stack-sm td, .sheet-table.stack-sm td:first-child, .sheet-table.stack-sm td:last-child { padding: 2px 0; }
+    .sheet-table.stack-sm td[data-label]::before { content: attr(data-label); display: block; font: 10px/1.4 var(--mono); color: var(--muted); }
+    .sheet-table.stack-sm code { white-space: normal; overflow-wrap: anywhere; }
+    .ann-line { font-size: 13px; }
+    .timeline { grid-template-columns: 1fr; gap: 10px; }
+    .timeline::before { left: 5.5px; right: auto; top: 6px; bottom: 6px; width: 1px; height: auto; }
+    .timeline li { display: grid; grid-template-columns: 12px 52px 1fr; align-items: start; gap: 10px; text-align: left; padding: 0; }
+    .timeline .node { grid-column: 1; grid-row: 1; margin: 2px 0 0; }
+    .timeline .year { grid-column: 2; grid-row: 1; height: auto; }
+    .timeline .what { grid-column: 3; grid-row: 1; }
+  }
+  @media screen and (max-width: 680px) {
+    p { text-align: left; hyphens: manual; }
+  }
+  /* Print: one landscape sheet with the line work kept. A4 by default (fits a desk printer, small
+     type); <html data-paper="a3"> gives a one-page A3 sheet with readable type for pinning up. */
+  @page { size: A4 landscape; margin: 20mm; }
+  @page a3 { size: A3 landscape; margin: 20mm; }
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; }
+    html[data-paper="a3"] body { page: a3; }
+    .sheet { padding: 0; zoom: 0.56; }
+    html[data-paper="a3"] .sheet { zoom: 0.83; }
+    .panel-meta, .caption, .zones, .gauge-ticks, .tb .k, .sheet-table th, .ann-meta, .measure,
+    .d, .tree-list small, .tree-list .k, .callout small, .sev, ol.ann-legend li::before, .ann-label,
+    ol.ann-legend, .timeline .what, .status { font-size: 13px; }
+    .panel, .titleblock, table { break-inside: avoid; }
+  }
+
+  /* Working diagram: OAuth 2.0 + PKCE sequence */
+  .diagram-wrap { margin: 0; }
+  .diagram { display: block; width: 100%; height: auto; min-width: 1000px; }
+  .diagram text { fill: var(--ink); white-space: pre; }
+  .diagram .pn { font: 600 17px var(--sans); }
+  .diagram .ps { font: 12px var(--mono); fill: var(--muted); }
+  .diagram .party rect { fill: var(--paper); stroke: var(--ink); stroke-width: 1.5; }
+  .diagram .life { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+  .diagram .sep { stroke: var(--hair); stroke-width: 1; }
+  .diagram .sep-l { font: 500 11.5px var(--mono); fill: var(--muted); letter-spacing: .08em; }
+  .diagram .msg line { stroke: var(--blue); stroke-width: 1.5; }
+  .diagram .msg.opt line { stroke-dasharray: 7 5; }
+  .diagram .lbl { font: 15px var(--sans); }
+  .diagram .lbl .m { font-family: var(--mono); font-size: 13.5px; }
+  .diagram .prm { font: 13px var(--mono); fill: var(--ink-2); }
+  .diagram .nb { font: 14px var(--sans); fill: var(--ink-2); }
+  .diagram .nb .m, .diagram .nb .pk { font-size: 13px; }
+  .diagram .pk { font-family: var(--mono); font-weight: 600; fill: var(--ink); }
+  .diagram .lbl .pk { font-size: 13.5px; }
+  .diagram .sn { font-family: var(--sans); font-size: 14px; }
+  .diagram .r, .diagram .r tspan { fill: var(--red); }
+  .diagram .ko { fill: var(--paper); }
+  .diagram .note rect { fill: var(--tint); stroke: var(--ink-2); stroke-width: 1; }
+  .diagram .note .tie { stroke: var(--ink-2); stroke-width: 1; }
+  .diagram .badge circle { fill: var(--blue); stroke: var(--blue); stroke-width: 1.5; }
+  .diagram .badge text { font: 600 12px var(--sans); fill: var(--paper); }
+  .diagram .badge.opt circle { fill: var(--paper); }
+  .diagram .badge.opt text { fill: var(--blue); }
+
+  /* legend row above the diagram */
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 13px; color: var(--ink-2); align-items: center; }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .legend svg { flex: none; }
+  .legend .lg-line { stroke: var(--blue); stroke-width: 1.5; }
+  .legend .lg-dash { stroke: var(--blue); stroke-width: 1.5; stroke-dasharray: 7 5; }
+  .legend .lg-dot { fill: var(--blue); }
+  .legend .pkv { font: 600 12.5px var(--mono); color: var(--ink); }
+  .legend .err { color: var(--red); }
+
+  /* step number chip in the tables, same as the diagram badge */
+  .stepno { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 4px; border-radius: 11px;
+    background: var(--blue); color: var(--paper); font: 600 12px/1 var(--sans); }
+  .stepno + .stepno { margin-left: 4px; }
+  .sheet-table td.step { width: 62px; white-space: nowrap; }
+  .sheet-table code.pk { font-weight: 600; }
+  .ui { font-weight: 600; }
+  .sheet-table code.wrap { white-space: normal; overflow-wrap: anywhere; }
+
+  /* "Fit to window" button: scales the diagram to the window height */
+  .fit-btn { align-self: center; margin: 0 12px 0 0; padding: 5px 9px; font: 500 11px/1 var(--mono); color: var(--ink);
+    background: var(--paper); border: 1px solid var(--ink); cursor: pointer; }
+  .fit-btn:hover { background: var(--tint); }
+  .fit-btn[aria-pressed="true"] { background: var(--blue-tint); }
+  #flow.fit .diagram { width: auto; height: calc(100vh - 24px); min-width: 0; margin: 0 auto; }
+  .scroll-hint { display: none; }
+  @media screen and (max-width: 1100px) {
+    .fit-btn { display: none; }
+    #flow.fit .diagram { width: 100%; height: auto; min-width: 1000px; }
+    .scroll-hint { display: block; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-ok" viewBox="0 0 24 24"><path d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></symbol>
+  <symbol id="i-no" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></symbol>
+</svg>
+
+<div class="sheet">
+<div class="frame plain">
+  <main class="content">
+  <div class="panels">
+
+    <section class="panel span-12" id="flow" aria-labelledby="pa">
+      <div class="panel-head"><div class="panel-id">A</div><h2 class="panel-title" id="pa">Authorization code flow with PKCE</h2><div class="panel-meta">RFC 6749, RFC 7636, nextjs-auth0 4.31.0 defaults</div><button class="fit-btn" type="button" aria-pressed="false" aria-controls="flow">Fit to window</button></div>
+      <div class="panel-body">
+        <div class="callout"><p>The Next.js server is the OAuth client. At step 2 it makes a secret <code>code_verifier</code>. Only its hash, <code>code_challenge</code>, goes to Auth0 in the step 4 URL. At step 10 the server sends the code together with <code>code_verifier</code>. Auth0 returns tokens only if the hash of <code>code_verifier</code> is equal to <code>code_challenge</code>. Your API sees only the <code>access_token</code> and validates it at step 19.</p></div>
+        <div class="legend" aria-label="Legend">
+          <span><svg width="34" height="10" aria-hidden="true"><line class="lg-line" x1="1" y1="5" x2="33" y2="5"/></svg>Request or response</span>
+          <span><svg width="34" height="10" aria-hidden="true"><line class="lg-dash" x1="1" y1="5" x2="33" y2="5"/></svg>Only on some requests</span>
+          <span><svg width="14" height="14" aria-hidden="true"><circle class="lg-dot" cx="7" cy="7" r="6.5"/></svg>Step number, also in table B</span>
+          <span><span class="pkv">code_verifier</span>PKCE value</span>
+          <span class="err">Red: the error at that step</span>
+        </div>
+        <div class="caption scroll-hint">Scroll sideways to see all parties</div>
+        <div class="table-wrap diagram-wrap">
+<svg class="diagram" viewBox="0 0 1440 1362" width="100%" role="img" aria-labelledby="seq-t seq-d">
+<title id="seq-t">OAuth 2.0 authorization code flow with PKCE between the browser, the Next.js server, Auth0 and your API</title>
+<desc id="seq-d">21 numbered steps in 4 phases: start the login, sign in at Auth0, code exchange, call your API. The table "Errors by step" uses the same numbers.</desc>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="context-stroke"/></marker></defs>
+<line class="sep" x1="0" y1="92" x2="1440" y2="92"/><text class="sep-l" x="1436" y="84" text-anchor="end">START THE LOGIN</text>
+<line class="sep" x1="0" y1="390" x2="1440" y2="390"/><text class="sep-l" x="1436" y="382" text-anchor="end">SIGN IN AT AUTH0</text>
+<line class="sep" x1="0" y1="530" x2="1440" y2="530"/><text class="sep-l" x="1436" y="522" text-anchor="end">CODE EXCHANGE</text>
+<line class="sep" x1="0" y1="1006" x2="1440" y2="1006"/><text class="sep-l" x="1436" y="998" text-anchor="end">CALL YOUR API</text>
+<line class="life" x1="96" y1="66" x2="96" y2="1352"/>
+<line class="life" x1="446" y1="66" x2="446" y2="1352"/>
+<line class="life" x1="866" y1="66" x2="866" y2="1352"/>
+<line class="life" x1="1176" y1="66" x2="1176" y2="1352"/>
+<g class="party"><rect x="6" y="10" width="180" height="56"/><text class="pn" x="96" y="35" text-anchor="middle">Browser</text><text class="ps" x="96" y="55" text-anchor="middle">the user's tab</text></g>
+<g class="party"><rect x="356" y="10" width="180" height="56"/><text class="pn" x="446" y="35" text-anchor="middle">Next.js server</text><text class="ps" x="446" y="55" text-anchor="middle">@auth0/nextjs-auth0 v4</text></g>
+<g class="party"><rect x="776" y="10" width="180" height="56"/><text class="pn" x="866" y="35" text-anchor="middle">Auth0 tenant</text><text class="ps" x="866" y="55" text-anchor="middle">&lt;AUTH0_DOMAIN&gt;</text></g>
+<g class="party"><rect x="1086" y="10" width="180" height="56"/><text class="pn" x="1176" y="35" text-anchor="middle">Your API</text><text class="ps" x="1176" y="55" text-anchor="middle">resource server</text></g>
+<g class="msg">
+<line x1="96" y1="130" x2="446" y2="130" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="115" r="10"/><text x="120" y="119" text-anchor="middle">1</text></g>
+<text class="lbl" x="136" y="120">User clicks Log in: <tspan class="m">GET /auth/login</tspan></text>
+</g>
+<g class="note">
+<line class="tie" x1="446" y1="157" x2="462" y2="157"/>
+<rect x="462" y="140" width="388" height="108"/>
+<g class="badge"><circle cx="482" cy="157" r="10"/><text x="482" y="161" text-anchor="middle">2</text></g>
+<text class="lbl" x="498" y="162">Makes the PKCE values</text>
+<text class="prm" x="474" y="181"><tspan class="pk">code_verifier</tspan>  = random, 43 to 128 characters</text>
+<text class="prm" x="474" y="200"><tspan class="pk">code_challenge</tspan> =</text>
+<text class="prm" x="474" y="219">    BASE64URL(SHA256(<tspan class="pk">code_verifier</tspan>))</text>
+<text class="prm" x="474" y="238">state, nonce   = random values</text>
+</g>
+<g class="msg">
+<line x1="446" y1="204" x2="96" y2="204" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="189" r="10"/><text x="120" y="193" text-anchor="middle">3</text></g>
+<text class="lbl" x="136" y="194">Redirects the browser to Auth0</text>
+<text class="prm" x="110" y="223" data-ste="ignore">302 Location: &lt;AUTH0_DOMAIN&gt;/authorize?…</text>
+<text class="prm" x="110" y="241" data-ste="ignore">Set-Cookie: __txn_&lt;state&gt;</text>
+<text class="prm" x="110" y="259" data-ste="ignore">  encrypted: <tspan class="pk">code_verifier</tspan>, state, nonce</text>
+</g>
+<rect class="ko" x="104" y="309" width="574" height="56"/>
+<g class="msg">
+<line x1="96" y1="304" x2="866" y2="304" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="289" r="10"/><text x="120" y="293" text-anchor="middle">4</text></g>
+<text class="lbl" x="136" y="294">Follows the redirect: <tspan class="m">GET /authorize</tspan></text>
+<text class="prm" x="110" y="323" data-ste="ignore">response_type=code  client_id  redirect_uri=&lt;APP_BASE_URL&gt;/auth/callback</text>
+<text class="prm" x="110" y="341" data-ste="ignore">scope=openid profile email offline_access  audience=&lt;API identifier&gt;</text>
+<text class="prm" x="110" y="359" data-ste="ignore">state  nonce  <tspan class="pk">code_challenge</tspan>  <tspan class="pk">code_challenge_method=S256</tspan></text>
+</g>
+<g class="msg">
+<line x1="96" y1="430" x2="866" y2="430" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="415" r="10"/><text x="120" y="419" text-anchor="middle">5</text></g>
+<text class="lbl" x="136" y="420">The user signs in on the Auth0 login page</text>
+</g>
+<g class="note">
+<line class="tie" x1="866" y1="455" x2="880" y2="455"/>
+<rect x="880" y="438" width="284" height="70"/>
+<g class="badge"><circle cx="900" cy="455" r="10"/><text x="900" y="459" text-anchor="middle">6</text></g>
+<text class="lbl" x="916" y="460">Makes a one-time code</text>
+<text class="nb" x="892" y="479">Keeps <tspan class="pk">code_challenge</tspan> with the code</text>
+<text class="prm" x="892" y="498">life: 10 min, single use</text>
+</g>
+<rect class="ko" x="104" y="481" width="457" height="20"/>
+<g class="msg">
+<line x1="866" y1="476" x2="96" y2="476" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="461" r="10"/><text x="120" y="465" text-anchor="middle">7</text></g>
+<text class="lbl" x="136" y="466">Redirects back to your callback URL</text>
+<text class="prm" x="110" y="495" data-ste="ignore">302 Location: &lt;APP_BASE_URL&gt;/auth/callback?code=…&amp;state=…</text>
+</g>
+<g class="msg">
+<line x1="96" y1="570" x2="446" y2="570" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="555" r="10"/><text x="120" y="559" text-anchor="middle">8</text></g>
+<text class="lbl" x="136" y="560"><tspan class="m">GET /auth/callback?code=…&amp;state=…</tspan></text>
+<text class="prm" x="110" y="589" data-ste="ignore">Cookie: __txn_&lt;state&gt;</text>
+</g>
+<g class="note">
+<line class="tie" x1="446" y1="595" x2="462" y2="595"/>
+<rect x="462" y="578" width="388" height="70"/>
+<g class="badge"><circle cx="482" cy="595" r="10"/><text x="482" y="599" text-anchor="middle">9</text></g>
+<text class="lbl" x="498" y="600">Finds the cookie <tspan class="m">__txn_&lt;state&gt;</tspan></text>
+<text class="nb" x="474" y="619">Reads <tspan class="pk">code_verifier</tspan> and nonce from it</text>
+<text class="nb r" x="474" y="638">No cookie for this state: <tspan class="m">invalid_state</tspan></text>
+</g>
+<g class="msg">
+<line x1="446" y1="692" x2="866" y2="692" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="470" cy="677" r="10"/><text x="470" y="681" text-anchor="middle">10</text></g>
+<text class="lbl" x="486" y="682">Exchanges the code: <tspan class="m">POST /oauth/token</tspan></text>
+<text class="prm" x="460" y="711" data-ste="ignore">grant_type=authorization_code  code</text>
+<text class="prm" x="460" y="729" data-ste="ignore"><tspan class="pk">code_verifier</tspan>  redirect_uri</text>
+<text class="prm" x="460" y="747" data-ste="ignore">client_id  client_secret</text>
+</g>
+<g class="note">
+<line class="tie" x1="866" y1="717" x2="880" y2="717"/>
+<rect x="880" y="700" width="284" height="89"/>
+<g class="badge"><circle cx="900" cy="717" r="10"/><text x="900" y="721" text-anchor="middle">11</text></g>
+<text class="lbl" x="916" y="722">Compares the hashes</text>
+<text class="prm" x="892" y="741"><tspan class="pk">BASE64URL(SHA256(code_verifier))</tspan></text>
+<text class="nb" x="892" y="760">Result must equal <tspan class="pk">code_challenge</tspan></text>
+<text class="nb r" x="892" y="779">No match: <tspan class="m">invalid_grant</tspan></text>
+</g>
+<g class="msg">
+<line x1="866" y1="796" x2="446" y2="796" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="470" cy="781" r="10"/><text x="470" y="785" text-anchor="middle">12</text></g>
+<text class="lbl" x="486" y="786">Returns the tokens</text>
+<text class="prm" x="460" y="815" data-ste="ignore">access_token: JWT, aud = &lt;API identifier&gt;</text>
+<text class="prm" x="460" y="833" data-ste="ignore">id_token  refresh_token  expires_in</text>
+</g>
+<g class="note">
+<line class="tie" x1="430" y1="821" x2="446" y2="821"/>
+<rect x="112" y="804" width="318" height="70"/>
+<g class="badge"><circle cx="132" cy="821" r="10"/><text x="132" y="825" text-anchor="middle">13</text></g>
+<text class="lbl" x="148" y="826">Validates the <tspan class="m">id_token</tspan></text>
+<text class="prm" x="124" y="845">signature  iss  aud  exp  nonce</text>
+<text class="nb" x="124" y="864">Saves the tokens in the session</text>
+</g>
+<g class="msg">
+<line x1="446" y1="918" x2="96" y2="918" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="903" r="10"/><text x="120" y="907" text-anchor="middle">14</text></g>
+<text class="lbl" x="136" y="908">Sends the user back, logged in</text>
+<text class="prm" x="110" y="937" data-ste="ignore">302 Location: returnTo (default /)</text>
+<text class="prm" x="110" y="955" data-ste="ignore">Set-Cookie: __session (encrypted)</text>
+<text class="prm" x="110" y="973" data-ste="ignore">Set-Cookie: __txn_&lt;state&gt;=; Max-Age=0</text>
+</g>
+<g class="msg">
+<line x1="96" y1="1046" x2="446" y2="1046" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="120" cy="1031" r="10"/><text x="120" y="1035" text-anchor="middle">15</text></g>
+<text class="lbl" x="136" y="1036">Asks for a page: <tspan class="m">GET /dashboard</tspan></text>
+<text class="prm" x="110" y="1065" data-ste="ignore">Cookie: __session</text>
+</g>
+<g class="note">
+<line class="tie" x1="446" y1="1071" x2="462" y2="1071"/>
+<rect x="462" y="1054" width="388" height="51"/>
+<g class="badge"><circle cx="482" cy="1071" r="10"/><text x="482" y="1075" text-anchor="middle">16</text></g>
+<text class="lbl" x="498" y="1076"><tspan class="m">auth0.getAccessToken()</tspan></text>
+<text class="nb" x="474" y="1095">Reads <tspan class="m">access_token</tspan> from the session</text>
+</g>
+<g class="msg opt">
+<line x1="446" y1="1146" x2="866" y2="1146" marker-end="url(#ah)"/>
+<g class="badge opt"><circle cx="470" cy="1131" r="10"/><text x="470" y="1135" text-anchor="middle">17</text></g>
+<text class="lbl" x="486" y="1136">Only if <tspan class="m">access_token</tspan> expired: gets a new one</text>
+<text class="prm" x="460" y="1165" data-ste="ignore">POST /oauth/token  grant_type=refresh_token</text>
+</g>
+<g class="msg">
+<line x1="446" y1="1212" x2="1176" y2="1212" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="470" cy="1197" r="10"/><text x="470" y="1201" text-anchor="middle">18</text></g>
+<text class="lbl" x="486" y="1202">Calls your API with the token</text>
+<text class="prm" x="460" y="1231" data-ste="ignore">Authorization: Bearer &lt;access_token&gt;</text>
+</g>
+<g class="note">
+<line class="tie" x1="1176" y1="1237" x2="1192" y2="1237"/>
+<rect x="1192" y="1220" width="244" height="108"/>
+<g class="badge"><circle cx="1212" cy="1237" r="10"/><text x="1212" y="1241" text-anchor="middle">19</text></g>
+<text class="lbl" x="1228" y="1242">Validates the token</text>
+<text class="prm" x="1204" y="1261">signature: key from JWKS</text>
+<text class="prm" x="1204" y="1280">iss: https://&lt;AUTH0_DOMAIN&gt;/</text>
+<text class="prm" x="1204" y="1299">aud: &lt;API identifier&gt;</text>
+<text class="prm" x="1204" y="1318">exp, scope</text>
+</g>
+<g class="msg opt">
+<line x1="1176" y1="1264" x2="866" y2="1264" marker-end="url(#ah)"/>
+<g class="badge opt"><circle cx="892" cy="1249" r="10"/><text x="892" y="1253" text-anchor="middle">20</text></g>
+<text class="lbl" x="908" y="1254"><tspan class="m">GET /.well-known/jwks.json</tspan></text>
+<text class="prm" x="882" y="1283"><tspan class="sn">First call only, then cached</tspan></text>
+</g>
+<g class="msg">
+<line x1="1176" y1="1320" x2="446" y2="1320" marker-end="url(#ah)"/>
+<g class="badge"><circle cx="470" cy="1305" r="10"/><text x="470" y="1309" text-anchor="middle">21</text></g>
+<text class="lbl" x="486" y="1310">Returns the data: <tspan class="m">200 JSON</tspan></text>
+<text class="prm r" x="460" y="1339" data-ste="ignore">401 invalid_token  or  403 insufficient_scope</text>
+</g>
+</svg>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel span-8" aria-labelledby="pb">
+      <div class="panel-head"><div class="panel-id">B</div><h2 class="panel-title" id="pb">Errors by step</h2><div class="panel-meta">error text from Auth0 and the SDK</div></div>
+      <div class="panel-body">
+        <div class="table-wrap">
+          <table class="sheet-table stack-sm">
+            <thead><tr><th>Step</th><th>You see</th><th>Cause</th><th>Fix</th></tr></thead>
+            <tbody>
+<tr><td class="step" data-label="Step"><span class="stepno">4</span></td><td data-label="You see">Auth0 page: <code>Callback URL mismatch</code></td><td data-label="Cause"><code>redirect_uri</code> is not in <span class="ui" data-ste="ignore">Allowed Callback URLs</span> of the Auth0 application. The two strings must be the same.</td><td data-label="Fix">Add <code class="wrap">&lt;APP_BASE_URL&gt;/auth/callback</code> to <span class="ui" data-ste="ignore">Allowed Callback URLs</span>.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">7</span></td><td data-label="You see"><code class="wrap">/auth/callback?error=access_denied</code></td><td data-label="Cause">Auth0 stopped the login. For example, the user canceled, or an Auth0 Action refused the user.</td><td data-label="Fix">Read <code>error_description</code> in the URL. Then read <span class="ui" data-ste="ignore">Monitoring &gt; Logs</span> in the Auth0 Dashboard.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">9</span></td><td data-label="You see">500: <code class="wrap">The state parameter is invalid.</code></td><td data-label="Cause">The browser did not send the cookie <code>__txn_&lt;state&gt;</code>. Usually the login started on a different host than <code>APP_BASE_URL</code>: localhost and 127.0.0.1 are different hosts. The cookie also expires after 1 h. A callback URL that you open a second time gives this error too, because step 14 deleted the cookie.</td><td data-label="Fix">Start the login on the host of <code>APP_BASE_URL</code>. In DevTools, examine the cookies of the <code>/auth/callback</code> request.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">10</span></td><td data-label="You see"><code>access_denied</code>: <code>Unauthorized</code></td><td data-label="Cause"><code>AUTH0_CLIENT_ID</code> or <code>AUTH0_CLIENT_SECRET</code> does not agree with the application in this tenant.</td><td data-label="Fix">Copy both values again from the application settings in Auth0.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">10</span></td><td data-label="You see"><code>invalid_grant</code>: <code class="wrap">Invalid authorization code</code></td><td data-label="Cause">Auth0 already used this code, or the code is older than 10 min. Two requests to the same callback URL at the same time can also cause it.</td><td data-label="Fix">Start a new login. In the Network tab, find the second <code>/auth/callback</code> request.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">11</span></td><td data-label="You see"><code>invalid_grant</code>: <code class="wrap">Failed to verify code verifier</code></td><td data-label="Cause">The <code>code_verifier</code> of step 10 does not give the <code>code_challenge</code> of step 4. Auth0 states that several fast <code>/authorize</code> calls for one login cause it.</td><td data-label="Fix">Start the login one time only. If your own code makes the PKCE values, compare <code class="wrap">BASE64URL(SHA256(code_verifier))</code> with <code>code_challenge</code> in the step 4 URL.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">16</span></td><td data-label="You see"><code>missing_refresh_token</code> from <code>getAccessToken()</code></td><td data-label="Cause">The <code>access_token</code> expired (default 24 h), and the session has no <code>refresh_token</code>. Auth0 gives one only with <code>offline_access</code> in the scope and <span class="ui" data-ste="ignore">Allow Offline Access</span> enabled for the API.</td><td data-label="Fix">Keep <code>offline_access</code> in the scope. Enable <span class="ui" data-ste="ignore">Allow Offline Access</span> in the API settings in Auth0.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">18</span></td><td data-label="You see">API 401. The token payload does not decode as JSON.</td><td data-label="Cause">Step 4 had no <code>audience</code>. Auth0 then returns an opaque token that only <code>/userinfo</code> accepts.</td><td data-label="Fix">Set <code>authorizationParameters.audience</code> in <code>Auth0Client</code> to the API identifier. Then log out and log in again, because the old session keeps the old token.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">19</span></td><td data-label="You see">API 401: <code>aud</code> or <code>iss</code> is not correct</td><td data-label="Cause"><code>aud</code> must be equal to the API identifier. <code>iss</code> is <code>https://&lt;AUTH0_DOMAIN&gt;/</code> with the slash at the end. With a custom domain, <code>iss</code> contains that domain.</td><td data-label="Fix">Decode the token. Compare <code>aud</code> and <code>iss</code> with the values in the API configuration.</td></tr>
+<tr><td class="step" data-label="Step"><span class="stepno">19</span></td><td data-label="You see">API 403: <code>insufficient_scope</code></td><td data-label="Cause">The token does not contain the scope or the permission that the endpoint needs.</td><td data-label="Fix">Add the scope to <code>authorizationParameters.scope</code>. For RBAC permissions, enable <span class="ui" data-ste="ignore">Add Permissions in the Access Token</span> in the API settings.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <hr class="hair flush">
+      <div class="panel-note"><p>The SDK shows a callback error as a 500 response with a short message. The Auth0 error is in <code>error.cause</code>. Log it in the <code>onCallback</code> hook of <code>Auth0Client</code>.</p></div>
+    </section>
+
+    <div class="stack span-4">
+      <section class="panel" aria-labelledby="pc">
+        <div class="panel-head"><div class="panel-id">C</div><h2 class="panel-title" id="pc">Values to track</h2><div class="panel-meta">where each value goes</div></div>
+        <div class="panel-body">
+          <div class="table-wrap">
+            <table class="sheet-table stack-sm">
+              <thead><tr><th>Value</th><th>Kept in</th><th>Sent to</th></tr></thead>
+              <tbody>
+<tr><td data-label="Value"><code class="pk">code_verifier</code><span class="d">made at step 2</span></td><td data-label="Kept in"><code>__txn_&lt;state&gt;</code> cookie, encrypted</td><td data-label="Sent to">Auth0 at step 10 only</td></tr>
+<tr><td data-label="Value"><code class="pk">code_challenge</code><span class="d">made at step 2</span></td><td data-label="Kept in">the /authorize URL, then Auth0</td><td data-label="Sent to">Auth0 at step 4</td></tr>
+<tr><td data-label="Value"><code>state</code><span class="d">made at step 2</span></td><td data-label="Kept in">the URL and the cookie name</td><td data-label="Sent to">Auth0 at step 4, back at step 7</td></tr>
+<tr><td data-label="Value"><code>nonce</code><span class="d">made at step 2</span></td><td data-label="Kept in"><code>__txn_&lt;state&gt;</code> cookie</td><td data-label="Sent to">Auth0 at step 4, back in the id_token</td></tr>
+<tr><td data-label="Value"><code>code</code><span class="d">made at step 6</span></td><td data-label="Kept in">the callback URL</td><td data-label="Sent to">Auth0 at step 10. One use, 10 min.</td></tr>
+<tr><td data-label="Value"><code>access_token</code><span class="d">made at step 12</span></td><td data-label="Kept in"><code>__session</code> cookie</td><td data-label="Sent to">Your API at step 18. Default life 24 h.</td></tr>
+<tr><td data-label="Value"><code>id_token</code><span class="d">made at step 12</span></td><td data-label="Kept in"><code>__session</code> cookie</td><td data-label="Sent to">Next.js only. Do not send it to your API.</td></tr>
+<tr><td data-label="Value"><code>refresh_token</code><span class="d">made at step 12</span></td><td data-label="Kept in"><code>__session</code> cookie</td><td data-label="Sent to">Auth0 at step 17 only</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <hr class="hair flush">
+        <div class="panel-note"><p><code>AUTH0_SECRET</code> encrypts both cookies, so DevTools shows only encrypted text.</p><p>The route <code>/auth/access-token</code> gives the token to browser code. If the browser calls your API directly, the <code>access_token</code> is in browser JavaScript, and your API needs CORS.</p></div>
+      </section>
+
+      <div class="titleblock">
+        <div class="tb tb-title"><span class="k">Title</span><h1 class="v">OAuth 2.0 login with PKCE: Next.js, Auth0 and your API</h1></div>
+        <div class="tb"><span class="k">Standards</span><span class="v">RFC 6749, 7636, 9700</span></div>
+        <div class="tb"><span class="k">SDK</span><span class="v">@auth0/nextjs-auth0 4.31.0</span></div>
+        <div class="tb"><span class="k">Assumes</span><span class="v">SDK defaults, server calls the API</span></div>
+        <div class="tb"><span class="k">Facts as of</span><span class="v">2026-10-03</span></div>
+        <div class="tb"><span class="k">Revision</span><span class="v">A</span></div>
+        <div class="tb"><span class="k">Sheet</span><span class="v">1 of 1</span></div>
+        <div class="tb tb-wide"><span class="k">Sources</span><span class="v">rfc-editor.org/rfc/rfc7636, github.com/auth0/nextjs-auth0, auth0.com/docs</span></div>
+      </div>
+    </div>
+
+  </div>
+  </main>
+</div>
+</div>
+
+<script>
+/* Fit to window: scale the diagram to the window height and keep the choice for this viewer. */
+(function () {
+  var panel = document.getElementById('flow');
+  var btn = panel.querySelector('.fit-btn');
+  function apply(on, scroll) {
+    panel.classList.toggle('fit', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.textContent = on ? 'Full width' : 'Fit to window';
+    if (on && scroll) panel.querySelector('.diagram').scrollIntoView({ block: 'start' });
+  }
+  var saved = false;
+  try { saved = localStorage.getItem('pkce-fit') === '1'; } catch (e) {}
+  apply(saved, false);
+  btn.addEventListener('click', function () {
+    var on = !panel.classList.contains('fit');
+    try { localStorage.setItem('pkce-fit', on ? '1' : '0'); } catch (e) {}
+    apply(on, true);
+  });
+})();
+</script>
+<script>
+/* Annotated lines: when the segments wrap onto two lines, a label leaves the panel, or labels
+   collide, show the line with numbered brackets and list the labels below it. Keep this script. */
+(function () {
+  function overlap(a, b) { return a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1; }
+  function needsLegend(line) {
+    var ts = line.querySelectorAll('.seg > .t');
+    if (!ts.length) return false;
+    var top = ts[0].getBoundingClientRect().top;
+    for (var i = 1; i < ts.length; i++) if (Math.abs(ts[i].getBoundingClientRect().top - top) > 2) return true;
+    if (line.scrollWidth > line.clientWidth + 1) return true;
+    var box = (line.closest('.panel-body') || line.parentElement).getBoundingClientRect();
+    var labels = line.querySelectorAll('.ann-label'), rects = [];
+    for (var j = 0; j < labels.length; j++) {
+      var r = labels[j].getBoundingClientRect();
+      if (r.left < box.left - 1 || r.right > box.right + 1) return true;
+      for (var k = 0; k < rects.length; k++) if (overlap(r, rects[k])) return true;
+      rects.push(r);
+    }
+    var texts = line.querySelectorAll('.t');
+    for (var m = 0; m < rects.length; m++) for (var n = 0; n < texts.length; n++) if (overlap(rects[m], texts[n].getBoundingClientRect())) return true;
+    return false;
+  }
+  function layout() {
+    document.querySelectorAll('.ann-line').forEach(function (line) {
+      line.classList.remove('legend');
+      var next = line.nextElementSibling;
+      if (next && next.classList.contains('ann-legend')) next.remove();
+      line.querySelectorAll('.seg[data-n]').forEach(function (s) { s.removeAttribute('data-n'); });
+      if (!needsLegend(line)) return;
+      line.classList.add('legend');
+      var ol = document.createElement('ol'), n = 0;
+      ol.className = 'ann-legend';
+      line.querySelectorAll('.seg').forEach(function (seg) {
+        var label = seg.querySelector('.ann-label');
+        if (!label) return;
+        seg.setAttribute('data-n', ++n);
+        var li = document.createElement('li');
+        li.textContent = label.textContent;
+        if (seg.classList.contains('bad')) li.className = 'bad';
+        ol.appendChild(li);
+      });
+      line.after(ol);
+    });
+  }
+  var timer;
+  window.addEventListener('resize', function () { clearTimeout(timer); timer = setTimeout(layout, 60); });
+  window.addEventListener('beforeprint', layout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout); else window.addEventListener('load', layout);
+  layout();
+})();
+</script>
+</body>
+</html>

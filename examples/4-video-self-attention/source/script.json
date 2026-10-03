@@ -1,0 +1,80 @@
+{
+  "voice": "am_michael",
+  "speed": 1.0,
+  "lead_in": 0.6,
+  "gap": 0.3,
+  "scene_gap": 0.6,
+  "final_hold": 3.5,
+  "sentences": [
+    {
+      "id": "s01",
+      "scene": 1,
+      "text": "Self-attention lets every word borrow meaning from the words around it."
+    },
+    {
+      "id": "s02",
+      "scene": 1,
+      "text": "Watch the word bank."
+    },
+    {
+      "id": "s03",
+      "scene": 2,
+      "text": "Three matrices, learned in training, give each word three vectors."
+    },
+    {
+      "id": "s04",
+      "scene": 2,
+      "text": "A query asks what the word needs."
+    },
+    {
+      "id": "s05",
+      "scene": 2,
+      "text": "A key says what it offers."
+    },
+    {
+      "id": "s06",
+      "scene": 2,
+      "text": "A value holds what it shares."
+    },
+    {
+      "id": "s07",
+      "scene": 3,
+      "text": "A dot product compares bank's query with each key."
+    },
+    {
+      "id": "s08",
+      "scene": 3,
+      "text": "Arrows that point the same way give a high score."
+    },
+    {
+      "id": "s09",
+      "scene": 4,
+      "text": "Then divide each score by the square root of the key size."
+    },
+    {
+      "id": "s10",
+      "scene": 4,
+      "text": "Softmax turns the scores into weights that total one."
+    },
+    {
+      "id": "s11",
+      "scene": 5,
+      "text": "Scale each value by its weight."
+    },
+    {
+      "id": "s12",
+      "scene": 5,
+      "text": "The sum is the new bank vector."
+    },
+    {
+      "id": "s13",
+      "scene": 5,
+      "text": "River has the most weight, so bank leans toward the river meaning."
+    },
+    {
+      "id": "s14",
+      "scene": 6,
+      "text": "Every word does this at once, in one formula."
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "karpathy-ladder",
+  "description": "Explain anything in the format that is easiest to understand: ASD-STE100 prose, a diagram, an engineering-drawing spec sheet, or a narrated 3Blue1Brown-style video. After Andrej Karpathy's post on reading LLM output.",
+  "version": "1.0.0",
+  "author": { "name": "FutureAtoms", "url": "https://github.com/FutureAtoms" },
+  "homepage": "https://github.com/FutureAtoms/karpathy-ladder",
+  "repository": "https://github.com/FutureAtoms/karpathy-ladder",
+  "license": "MIT",
+  "keywords": ["explainer", "ste100", "simplified-technical-english", "diagram", "html", "spec-sheet", "manim", "video", "karpathy"]
+}

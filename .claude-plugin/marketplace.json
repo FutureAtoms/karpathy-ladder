@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "karpathy-ladder",
+  "description": "The Karpathy Ladder: make LLM output easy to understand.",
+  "owner": { "name": "FutureAtoms", "url": "https://github.com/FutureAtoms" },
+  "plugins": [
+    {
+      "name": "karpathy-ladder",
+      "description": "Explain anything as ASD-STE100 prose, a diagram, an engineering-drawing spec sheet or a narrated video, picked to fit the question.",
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/FutureAtoms/karpathy-ladder"
+    }
+  ]
+}

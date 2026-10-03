@@ -59,6 +59,7 @@ A table with one row for each scene. Each scene shows one idea.
 - Show mechanisms as geometry: vectors as arrows on a plane, a dot product as alignment between two arrows, weights as bar lengths.
 - Build up, do not cut: objects move, split, combine and transform into the next state. Fade out a text label before you transform its object, so no garbled glyphs show mid-morph.
 - One new object or change at a time, timed to the word that names it. Start each visual on the first word of its sentence, so no second of the video is empty.
+- Show where each new quantity comes from when it first appears (for attention: q = W_Q x, k = W_K x, v = W_V x).
 - Use one symbol for one thing in narration and on screen (for example √d_k everywhere, with "d_k is the key size" on screen once).
 - Math in LaTeX (`MathTex`), set in pieces as the narration reaches them.
 - Labels at 28 px or more at 1080p; keep everything inside a 5% title-safe margin.

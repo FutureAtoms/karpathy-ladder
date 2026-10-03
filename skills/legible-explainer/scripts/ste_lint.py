@@ -149,7 +149,9 @@ ING_OK = set(
     tracing profiling testing debugging versioning buffering batching casing
     offering pairing meaning writing reading drawing understanding training
     recording marking finding rating wording thinking feeling lighting
-    painting filling holding learning""".split()
+    painting filling holding learning misleading interesting confusing surprising
+    outstanding pending existing following leading matching corresponding
+    underlying""".split()
 )
 
 IRREGULAR_PARTICIPLES = set(
@@ -503,6 +505,8 @@ def check_sentence(sentence: str, block_idx: int, kind: str, mode: str, allow: s
     def add(rule, severity, message):
         out.append(Finding(rule, severity, message, snippet, block_idx))
 
+    if re.match(r"^\s*(sources?|references?|see also)\s*:", sentence, re.I):
+        return out  # a list of sources is a reference line, not a sentence
     if kind not in {"heading", "label", "cell"} or n > 12:
         limit = PROCEDURAL_LIMIT if procedural else DESCRIPTIVE_LIMIT
         if n > limit:

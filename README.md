@@ -1,5 +1,7 @@
 # The Karpathy Ladder
 
+[![checks](https://github.com/FutureAtoms/karpathy-ladder/actions/workflows/test.yml/badge.svg)](https://github.com/FutureAtoms/karpathy-ladder/actions/workflows/test.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
+
 **A Claude Code skill that makes LLM output easy to understand.** Ask for an explanation and get it in the format that fits: ASD-STE100 prose, a diagram, a one-page engineering-drawing spec sheet, or a narrated 3Blue1Brown-style video.
 
 ![The Karpathy Ladder: STE prose, diagram, spec sheet and explainer video, with test results](docs/karpathy-ladder.png)
@@ -60,11 +62,11 @@ Every page the skill makes opens from `file://` with no build step, and Google F
 
 The skill was built with Anthropic's skill-creator loop and reviewed by four AI reviewers from three model families. As of 2026-10-03:
 
-- **Blind reader test:** each reviewer saw the skill's output and plain Claude's output for six tasks, labelled A and B at random, and said which one a reader would understand faster. The skill won 20 of 24 comparisons.
-- **Graded checks:** 95% passed with the skill, 76% without it, across the six evals (STE quality, accuracy, layout, print, delivery).
-- **Cost:** about 250 s more per task than plain Claude, mostly spent on checking the page and verifying facts.
+- **Blind reader test:** each reviewer saw the skill's output and plain Claude's output for six tasks, labelled A and B at random, and said which one a reader would understand faster. The skill won 17 of 24 comparisons, with 2 ties.
+- **Graded checks:** 93% passed with the skill, 75% without it, across the six evals (STE quality, accuracy, layout, print, delivery).
+- **Cost:** about 390 s more per task than plain Claude, mostly spent on checking the page and verifying facts.
 
-Details and the open issues are in [docs/benchmark.md](docs/benchmark.md).
+Both sides ran fresh on the same day with the same model. One run per side is a small sample, so read these as a direction. Details, the tasks where plain Claude won, and what changed after are in [docs/benchmark.md](docs/benchmark.md).
 
 ## Examples
 
@@ -76,6 +78,10 @@ Details and the open issues are in [docs/benchmark.md](docs/benchmark.md).
 | Video | [Self-attention in 48 s](examples/4-video-self-attention/) (MP4, script, scene plan, Manim source) |
 
 Open an HTML example in a browser. The sheets reflow on a phone and print on one landscape page.
+
+## Contributing
+
+New examples, sharper checks, more STE substitutions and new video styles are all welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md), pick an issue labelled [good first issue](https://github.com/FutureAtoms/karpathy-ladder/labels/good%20first%20issue), or post what the skill made for you in [Show and tell](https://github.com/FutureAtoms/karpathy-ladder/discussions/categories/show-and-tell). Run `./tests/check.sh` before you open a pull request; CI runs the same checks.
 
 ## Credits
 

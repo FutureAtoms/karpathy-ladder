@@ -23,7 +23,11 @@ diagram comes first and gets the full width: one `span-12` panel at the top,
 with the numbered steps, tables and notes in panels below it. For a working
 diagram (kept open while the user debugs or builds), use `<div class="frame
 plain">` to drop the zone margins, so every pixel goes to the diagram; keep
-the zone frame for a reference sheet. A working diagram is for the screen:
+the zone frame for a reference sheet. A working diagram that the user keeps
+open must show the whole flow on one 1080p screen: tighten the row spacing,
+or add a compact toggle that keeps every step and its key values. A visible
+marker for each step (which steps show in the browser's DevTools and which
+only in server logs) helps the user debug. A working diagram is for the screen:
 write "Screen" in the title block's Sheet field and ship no PDF unless the user
 asks to print it; `check_page.py` warns about print pages that do not matter
 here. Fill the title block as in

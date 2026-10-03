@@ -254,6 +254,7 @@ PAGE_PROBE = r"""
   if (h1 && document.title.trim() !== h1.innerText.trim()) warnings.push({rule: 'title-mismatch', detail: `<title> "${document.title}" differs from <h1> "${h1.innerText.trim()}"`});
 
   return {errors, warnings, width: vw, height: document.documentElement.scrollHeight, isSheet: !!document.querySelector('.sheet'),
+          words: (text.match(/[A-Za-z0-9'’]+/g) || []).length,
           fonts: [...document.fonts].filter(f => f.status === 'loaded').map(f => f.family).filter((v, i, a) => a.indexOf(v) === i)};
 }
 """
@@ -346,7 +347,7 @@ def check(page: Path, out: Path) -> dict:
                 add("errors", e, name)
             for wn in result["warnings"]:
                 add("warnings", wn, name)
-            info = {"width": result["width"], "height": result["height"], "fonts": result["fonts"]}
+            info = {"width": result["width"], "height": result["height"], "fonts": result["fonts"], "words": result["words"]}
             if name in {"desktop", "mobile"}:
                 shot = out / f"{name}.png"
                 tab.screenshot(path=str(shot), full_page=True, scale="css")
@@ -403,6 +404,8 @@ def print_report(report: dict) -> None:
     for name, v in report["viewports"].items():
         shot = f"  screenshot {v['screenshot']}" if "screenshot" in v else ""
         print(f"  {name}: {v['width']}x{v['height']}{shot}  fonts {', '.join(v['fonts']) or 'none loaded'}")
+    if "desktop" in report["viewports"]:
+        print(f"  visible words: {report['viewports']['desktop']['words']} (a review of a document should stay under the document's own length)")
     for paper, p in report.get("print", {}).items():
         print(f"  print {p['paper']}: {p['pages']} page(s), body {p['body_pt']} pt, smallest {p['min_pt']} pt  {p['pdf']}")
     for e in report["errors"]:

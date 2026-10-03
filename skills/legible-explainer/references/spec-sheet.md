@@ -116,7 +116,9 @@ These are the skill's house design rules (opinionated defaults; edit them to tas
 When the user gives you a document to understand (an agent's plan, a design
 doc, a diff, a long answer), the sheet maps that document, and a separate
 panel gives your assessment. The sheet is shorter than the document: a
-reader with no time for the source has no time for a longer review. Typical
+reader with no time for the source has no time for a longer review.
+`check_page.py` prints the visible word count; keep it under the source's
+word count. Typical
 panels:
 
 - Bottom line (panel A): your verdict on the user's decision in one sentence, the conditions, and a sentence the user can say at their meeting

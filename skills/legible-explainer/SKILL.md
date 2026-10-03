@@ -109,7 +109,7 @@ A clear explanation of a wrong fact is worse than no explanation.
 
 ## Tier workflows
 
-- **Tier 1**: write the answer in STE, in chat. Open with the answer to the question, then the detail for each topic the user named. Use a vertical list for steps or parallel items; headings name the subject. Lint the draft through stdin. Write a `.md` file as well only when the user asks for one or the answer is a reference they will keep; the chat still carries the full answer.
+- **Tier 1**: write the answer in STE, in chat. Open with the answer to the question, then the detail for each topic the user named. A question with a few named topics usually needs 500 to 1,000 words; count them before you send. Use a vertical list for steps or parallel items; headings name the subject. Lint the draft through stdin. Write a `.md` file as well only when the user asks for one or the answer is a reference they will keep; the chat still carries the full answer.
 - **Tier 2**: read `references/diagram.md`. Hand-draw the SVG (no diagram libraries, no CDN scripts) in the sheet's visual language, with STE labels and numbered steps.
 - **Tier 3**: read `references/spec-sheet.md`, then copy `assets/spec-sheet-template.html` and replace all its demo content, including the `<title>`. Plan the panels first: one panel for each question the reader has.
 - **Tier 4**: read `references/video.md`. Choose the engine (Manim for a 3Blue1Brown look, hyperframes for other styles) and the voice, write the narration and a scene plan, build, and check the render.

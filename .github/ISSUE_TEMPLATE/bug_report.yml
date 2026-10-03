@@ -1,0 +1,52 @@
+name: Bug report
+description: The skill picked the wrong rung, made a broken page, or wrote something wrong.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. A good bug report lets someone else make the same output again.
+        If a checker flagged something that is correct, use the "Checker false positive" form instead.
+  - type: textarea
+    id: prompt
+    attributes:
+      label: What you asked
+      description: The prompt you gave Claude Code, word for word if you can.
+    validations:
+      required: true
+  - type: dropdown
+    id: rung
+    attributes:
+      label: Rung
+      description: The format the skill made (or should have made).
+      options:
+        - "1: STE prose"
+        - "2: Diagram"
+        - "3: Spec sheet (HTML page)"
+        - "4: Video"
+        - "It picked the wrong rung"
+        - "Not sure"
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What went wrong
+      description: What you got, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Output, screenshot or checker report
+      description: Attach the file, a screenshot, or the report.json from check_page.py. Remove anything private first.
+  - type: input
+    id: claude-version
+    attributes:
+      label: Claude Code version and model
+      placeholder: "claude --version, and the model you used"
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "macOS 26, Ubuntu 24.04, Windows 11 with WSL"

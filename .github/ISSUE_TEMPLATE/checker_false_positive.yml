@@ -1,0 +1,35 @@
+name: Checker false positive
+description: ste_lint.py or check_page.py flagged text or a page that is correct.
+labels: ["checker", "bug"]
+body:
+  - type: dropdown
+    id: script
+    attributes:
+      label: Script
+      options:
+        - ste_lint.py
+        - check_page.py
+    validations:
+      required: true
+  - type: textarea
+    id: input
+    attributes:
+      label: Smallest input that shows it
+      description: The sentence, or a short HTML file. Smaller is better; a single sentence is ideal.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What the script printed
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it is correct
+      description: For STE, name the rule (for example "approximately is an approved word in Issue 9"). For pages, say what you see when you open it.
+    validations:
+      required: true

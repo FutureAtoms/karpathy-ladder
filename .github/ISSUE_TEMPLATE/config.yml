@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Show what you made
+    url: https://github.com/FutureAtoms/karpathy-ladder/discussions/categories/show-and-tell
+    about: Share a sheet, diagram or video the skill made for you.
+  - name: Questions
+    url: https://github.com/FutureAtoms/karpathy-ladder/discussions/categories/q-a
+    about: Ask how to install, use or change the skill.

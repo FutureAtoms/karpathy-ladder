@@ -1,0 +1,29 @@
+name: Idea or new rung
+description: A new format, a new video style, a new check, or a better way to pick the rung.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is hard to understand today
+      description: The kind of question or LLM output where the current rungs do not help enough.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What the skill should make instead
+      description: Describe the output. A sketch, a screenshot of something similar, or a link helps a lot.
+    validations:
+      required: true
+  - type: textarea
+    id: check
+    attributes:
+      label: How we would know it works
+      description: A check a script could run, or a test prompt for evals/evals.json.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to build this myself

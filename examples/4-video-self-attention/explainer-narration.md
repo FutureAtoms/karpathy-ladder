@@ -2,9 +2,20 @@
 
 **Message:** Each word becomes a blend of the values, weighted by how well its query matches each key.
 
-**Voice:** Kokoro `am_michael` (calm American male), speed 1.0, made on this Mac with kokoro-onnx. Another good Kokoro voice for this style is `af_heart` (American female). To change the voice, edit `voice` in `source/script.json` and run `source/build.sh`.
+**Voice:** Kokoro `af_heart`, speed 0.8, made on this Mac with kokoro-onnx, with about 1.1 s of silence after each sentence and 1.9 s between scenes. To change the voice or the pace, edit `source/script.json` and run `source/build.sh`.
 
-**Length:** 118 words. The speech ends at 44.4 s. The video ends at 47.9 s, after a closing hold with the message on screen. These timings come from the build of 2026-10-03.
+**Length:** about 160 words with the intro and recap. The video runs 92 s: an 8.6 s title card with a one-line intro, the 67 s body, and a recap card that holds for 3 s after the last word. These timings come from the build of 2026-10-04.
+
+Intro, on the title card:
+
+- In the next minute, you will see how a model finds the meaning of a word from the words around it.
+
+Recap, on the recap card:
+
+- So, to recap.
+- Each word made a query, a key and a value.
+- We compared bank's query with every key, turned the scores into weights, and blended the values.
+- That is self-attention.
 
 ## Script
 

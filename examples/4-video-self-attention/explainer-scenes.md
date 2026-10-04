@@ -2,7 +2,9 @@
 
 **Message:** Each word becomes a blend of the values, weighted by how well its query matches each key.
 
-**Look:** dark background, light ink, LaTeX type. Yellow is the accent for bank (its query and its new vector). Blue is the contrast color for the keys and values of all words. The video has no burned-in captions. The subtitles are a soft track in the `.mp4` and a separate `.srt`.
+**Look:** dark background, light ink, LaTeX type. Yellow is the accent for bank (its query and its new vector). Blue is the contrast color for the keys and values of all words. Captions are burned in, small, at the bottom; on the two cards they sit in a band above the footer. The same captions ship as a separate `.srt`. A quiet piano bed plays about 20 dB under the voice.
+
+**Structure:** a title card (0 to 8.6 s, also the thumbnail) with the spoken intro, then the six scenes below (their times are measured from the start of the body), then a recap card with the steps as boxes, the formula and the spoken recap.
 
 **Times** come from the voice clips of the build of 2026-10-03 (`timings.json`). The scene code waits for the start of each sentence, so a new voice changes the times but keeps each visual on its words.
 

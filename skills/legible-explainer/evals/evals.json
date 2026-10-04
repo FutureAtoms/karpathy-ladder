@@ -32,7 +32,7 @@
     {
       "id": 3,
       "name": "sheet-ste-overview",
-      "prompt": "Make me a one-page overview of ASD-STE100 itself, drawn like an engineering drawing sheet. Something like the attached image (evals/files/reference-ste-sheet.png). I want to pin it next to my desk when I write docs.",
+      "prompt": "Make me a one-page overview of ASD-STE100 itself, drawn like an engineering drawing sheet. Something like the attached image (evals/files/example-ste-sheet.png). I want to pin it next to my desk when I write docs.",
       "expected_output": "Tier 3: one self-contained HTML spec sheet that matches the reference image's visual language (zone frame 1-8 by A-D, lettered panels, title block) with correct STE facts: Issue 9 (2025), 9 sections, 53 rules, about 900 approved words, limits 20 / 25 words, 6 sentences per paragraph, noun clusters of max 3 words, approved verb forms, WARNING vs CAUTION, history 1979 / 1986 / 2004-2005. Prose in STE. Passes check_page and ste_lint. It must not copy the reference image's own errors: APPROXIMATELY is an approved word (ABOUT means only 'concerned with'), TEST and CHECK are approved only as nouns, and Issue 9 uses 'technical nouns' and 'multi-word nouns'.",
       "files": [
         "evals/files/example-ste-sheet.png"

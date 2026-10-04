@@ -1,15 +1,18 @@
 # Self-attention explainer video
 
-A 47.9 s explainer of self-attention in transformers, in the style of 3Blue1Brown, with a narration voice that runs on this Mac.
+A 92 s explainer of self-attention in transformers, in the style of 3Blue1Brown, with a narration voice that runs on this Mac. It opens on a title card that says what you are about to see, explains the idea step by step at a calm pace, and closes on a recap card.
 
 ## Files
 
-- `self-attention.mp4`: the video, 1920 x 1080 at 60 fps, with an AAC voice track and a soft English subtitle track.
+- `self-attention.mp4`: the video, 1920 x 1080 at 60 fps, with the voice, a quiet piano bed and burned-in captions (feeds autoplay muted).
 - `self-attention.srt`: the same subtitles as a separate file.
 - `explainer-narration.md`: the narration, the facts behind it, and what the video leaves out.
 - `explainer-scenes.md`: the scene plan, with times, the words for each scene, and the toy numbers.
 - `source/script.json`: the narration sentences and the voice settings. Edit this file to change the words or the voice.
 - `source/narrate.py`: makes one voice clip for each sentence with Kokoro, then the voice track, `timings.json` and the subtitles.
+- `source/title_card.py`, `source/recap_card.py`: the title card (also the thumbnail) and the recap card, rendered as Manim stills.
+- `source/music.py`: the quiet piano bed, made on the machine, so there is nothing to license.
+- `source/finish.py`: joins title card, body and recap card, adds the intro and recap narration and the music, and burns in the captions.
 - `source/scene.py`: the Manim scene. It reads `timings.json` and starts each visual at the start of its sentence.
 - `source/build.sh`: runs all the steps and writes the `.mp4` and the `.srt` into this folder.
 
@@ -44,4 +47,4 @@ The Kokoro model has an Apache 2.0 license, so you can use the voice in a publis
 
 ## Voice
 
-The voice is Kokoro `am_michael`, a calm American male voice, at speed 1.0. For a female narrator, set `"voice": "af_heart"` in `source/script.json`. If Kokoro stops with a "phontab" error, copy the espeak-ng data folder to a short path. Then set `ESPEAK_DATA_PATH` to that path.
+The voice is Kokoro `af_heart` at speed 0.8, with about 1.1 s of silence after each sentence and 1.9 s between scenes. Change `voice`, `speed`, `gap` and `scene_gap` in `source/script.json`; `intro` and `recap` hold the words for the two cards. Burning captions needs an ffmpeg with libass; without one, `finish.py` runs ffmpeg in the `linuxserver/ffmpeg` container. If Kokoro stops with a "phontab" error, copy the espeak-ng data folder to a short path. Then set `ESPEAK_DATA_PATH` to that path.

@@ -45,7 +45,7 @@ Ask the way you normally would. The skill picks the lowest rung that fully answe
 | "Draw the OAuth PKCE flow so I can keep it open while I debug" | A self-contained HTML page with a hand-drawn SVG sequence diagram, every value on its arrow |
 | "Make a one-page overview of X I can pin next to my desk" | An engineering-drawing spec sheet in HTML, plus A4 and A3 PDFs |
 | "An agent wrote this plan overnight. What does it propose and what could go wrong?" | A sheet that maps the document, checks it against itself, and leads with a verdict you can say at standup |
-| "Make a 3b1b-style video on self-attention with a free local voice" | A narrated MP4 built with Manim and Kokoro, with subtitles, the script and the scene plan |
+| "Make a 3b1b-style video on self-attention with a free local voice" | A narrated MP4 built with Manim and Kokoro: a title card that says what is coming, the explanation at a calm pace, a recap card, burned-in captions and a quiet music bed |
 
 ## What is inside
 
@@ -82,7 +82,7 @@ Both sides ran fresh on the same day with the same model. One run per side is a 
 | STE prose | [TCP congestion control](examples/1-ste-prose/tcp-congestion-control.md), [mutex vs semaphore](examples/1-ste-prose/mutex-vs-semaphore.md) |
 | Diagram | [OAuth 2.0 + PKCE with Next.js and Auth0](examples/2-diagram-oauth-pkce/) |
 | Spec sheet | [ASD-STE100 overview](examples/3-spec-sheet-ste100/) (HTML, A4 and A3 PDF), [review of an agent-written migration plan](examples/3-plan-review/) |
-| Video | [Self-attention in 48 s](examples/4-video-self-attention/) (MP4, script, scene plan, Manim source) |
+| Video | [Self-attention in 92 s](examples/4-video-self-attention/) (MP4, script, scene plan, Manim source) |
 
 Open an HTML example in a browser. The sheets reflow on a phone and print on one landscape page.
 

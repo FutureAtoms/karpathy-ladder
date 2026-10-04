@@ -2,8 +2,9 @@
 # Rebuild self-attention.mp4 and self-attention.srt from this folder.
 #
 # Steps: Kokoro voice (one clip for each sentence) -> timings.json ->
-# Manim render timed from those clips -> ffmpeg mux of video, voice and a
-# soft subtitle track.
+# Manim render timed from those clips -> ffmpeg mux of the body ->
+# finish.py: title card with a spoken intro, recap card with a spoken recap,
+# a quiet piano bed, and burned-in captions.
 #
 # Settings (environment variables, all optional):
 #   WORK_DIR       folder for clips, renders and caches (default: a new temp folder)
@@ -49,3 +50,6 @@ cp "$WORK/subtitles.srt" "$OUT/self-attention.srt"
 
 ffprobe -v error -show_entries format=duration:stream=codec_type,codec_name,width,height \
   -of compact "$OUT/self-attention.mp4"
+
+# 4. Title and recap cards, intro and recap narration, music, burned-in captions
+"$KOKORO_PY" "$HERE/finish.py" "$WORK" --manim "$MANIM" --model "$KOKORO_MODEL" --voices "$KOKORO_VOICES"

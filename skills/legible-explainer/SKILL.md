@@ -112,7 +112,7 @@ A clear explanation of a wrong fact is worse than no explanation.
 - **Tier 1**: write the answer in STE, in chat. Open with the answer to the question, then the detail for each topic the user named. A question with a few named topics usually needs 500 to 1,000 words; count them before you send. Use a vertical list for steps or parallel items; headings name the subject. Lint the draft through stdin. Write a `.md` file as well only when the user asks for one or the answer is a reference they will keep; the chat still carries the full answer.
 - **Tier 2**: read `references/diagram.md`. Hand-draw the SVG (no diagram libraries, no CDN scripts) in the sheet's visual language, with STE labels and numbered steps.
 - **Tier 3**: read `references/spec-sheet.md`, then copy `assets/spec-sheet-template.html` and replace all its demo content, including the `<title>`. Plan the panels first: one panel for each question the reader has.
-- **Tier 4**: read `references/video.md`. Choose the engine (Manim for a 3Blue1Brown look, hyperframes for other styles) and the voice, write the narration and a scene plan, build, and check the render.
+- **Tier 4**: read `references/video.md`. Choose the engine (Manim for a 3Blue1Brown look, hyperframes for other styles) and the voice, plan a title card with a one-line intro, the body and a recap card, write the narration and a scene plan, build at a calm pace with burned-in captions and a quiet music bed, and check the render.
 
 ## Deliver
 
@@ -154,6 +154,6 @@ get the answer.
 - `references/ste-writing.md`: STE rules by section, the dial, substitution table, before-and-after examples.
 - `references/diagram.md`: tier 2 diagram rules and SVG patterns.
 - `references/spec-sheet.md`: tier 3 layout, panel catalogue, document sheets, design rules.
-- `references/video.md`: tier 4 voice, narration, scene plan and hyperframes hand-off.
+- `references/video.md`: tier 4 structure (title, body, recap), voice and pace, music, captions, scene plan and hyperframes hand-off.
 - `assets/spec-sheet-template.html`: a working sheet with every component (demo topic: HTTP caching).
 - `scripts/ste_lint.py`, `scripts/check_page.py`: checkers. Both have `--self-test`.

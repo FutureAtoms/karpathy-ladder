@@ -2,22 +2,29 @@
 
 [![checks](https://github.com/FutureAtoms/karpathy-ladder/actions/workflows/test.yml/badge.svg)](https://github.com/FutureAtoms/karpathy-ladder/actions/workflows/test.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Claude Code plugin](https://img.shields.io/badge/Claude%20Code-plugin-d97757.svg)](#install)
 
-**A Claude Code skill that makes LLM output easy to understand.** Ask for an explanation and get it in the format that fits: ASD-STE100 prose, a diagram, a one-page engineering-drawing spec sheet, or a narrated 3Blue1Brown-style video.
+**An unofficial Claude Code skill that makes LLM output easy to understand.** Not affiliated with or endorsed by Andrej Karpathy or Anthropic. Ask for an explanation and get it in the format that fits: ASD-STE100 prose, a diagram, a one-page engineering-drawing spec sheet, or a narrated 3Blue1Brown-style video.
 
 ![The Karpathy Ladder: STE prose, diagram, spec sheet and explainer video, with test results](docs/karpathy-ladder.png)
 
-On 2 October 2026 Andrej Karpathy [posted](https://x.com/karpathy/status/2105819303471976479) that we will spend more and more time trying to understand what language models produce, and he ranked the output formats that help most. Each one is "even better" than the last: text in ASD-STE100 (the controlled English of aircraft maintenance manuals), then diagrams, then web pages, then custom explainer videos. This repo turns that ladder into one skill that picks the right rung for each question, builds the output, and checks it before you see it.
+On 2 October 2026 Andrej Karpathy [posted](https://x.com/karpathy/status/2105819303471976479) that we will spend a lot more time trying to understand the outputs of language models, and he ranked the output formats that help most. Each one is "even better" than the last: text in ASD-STE100 (the controlled English of aircraft maintenance manuals), then diagrams, then web pages, then custom explainer videos. This repo turns that ladder into one skill that picks the right rung for each question, builds the output, and checks it before you see it.
 
-Not affiliated with or endorsed by Andrej Karpathy.
 
 ## Install
 
-In Claude Code:
+In Claude Code (v2.1.275 or later):
+
+```
+/plugin install karpathy-ladder --marketplace FutureAtoms/karpathy-ladder
+```
+
+On an older version, add the marketplace first:
 
 ```
 /plugin marketplace add FutureAtoms/karpathy-ladder
 /plugin install karpathy-ladder@karpathy-ladder
 ```
+
+The plugin is one skill. It has no hooks and no MCP server; it runs two local Python checkers on the pages it makes.
 
 Or copy the skill folder by hand:
 

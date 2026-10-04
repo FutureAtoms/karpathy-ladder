@@ -45,7 +45,8 @@
   .band p { font: 400 20px/1.3 var(--sans); color: var(--ink-2); margin-top: 7px; }
   .install { border: 1.5px solid var(--ink); background: var(--r1t); padding: 10px 16px 12px; }
   .install .k { display: block; font: 12px/1.3 var(--mono); color: var(--muted); margin-bottom: 4px; }
-  .install code { font: 600 19px/1.2 var(--mono); }
+  .install code { display: block; font: 600 19px/1.25 var(--mono); }
+  .install code.cont { padding-left: 2ch; }
 
   /* How it works strip */
   .flow { display: flex; align-items: center; gap: 10px; }
@@ -145,9 +146,9 @@
     <div class="band">
       <div>
         <h1>The Karpathy Ladder <span>for Claude Code</span></h1>
-        <p>Ask for an explanation. Get it in the format that is easiest to understand.</p>
+        <p>An unofficial skill: ask for an explanation, get it in the format that is easiest to understand.</p>
       </div>
-      <div class="install"><span class="k">install in Claude Code</span><code>/plugin marketplace add FutureAtoms/karpathy-ladder</code></div>
+      <div class="install"><span class="k">install in Claude Code</span><code>/plugin install karpathy-ladder</code><code class="cont">--marketplace FutureAtoms/karpathy-ladder</code></div>
     </div>
 
     <div class="flow">
@@ -160,7 +161,7 @@
     </div>
 
     <section class="panel">
-      <div class="ph"><div class="pid">A</div><h2 class="pt">The ladder: each rung is easier to understand than the one below</h2><div class="pm">after Karpathy's post on reading LLM output</div></div>
+      <div class="ph"><div class="pid">A</div><h2 class="pt">The ladder: each rung is easier to understand than the one below</h2><div class="pm">after Karpathy's post on understanding LLM output</div></div>
       <div class="pb">
         <div class="rail-label"><span class="bar"></span>Easier to understand &#8594;</div>
         <svg class="rail" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
@@ -212,7 +213,7 @@
               <p class="bad-text"><em>In order to ensure</em> that the cache is <em>utilized</em>, <em>it is recommended</em> that the TTL <em>is configured prior to</em> deployment.</p>
             </div>
             <div class="box after">
-              <div class="lab"><span class="chip"><svg class="i"><use href="#i-ok"/></svg>With the skill</span><span class="count">11 words</span></div>
+              <div class="lab"><span class="chip"><svg class="i"><use href="#i-ok"/></svg>In STE</span><span class="count">11 words</span></div>
               <div class="ann"><span class="seg"><span class="t">Set</span><span class="lbl">Command</span></span> the TTL <span class="seg"><span class="t">before</span><span class="lbl l2">Simple word</span></span> <span class="seg"><span class="t">you deploy</span><span class="lbl">Active voice</span></span>, so that the cache works.</div>
             </div>
           </div>
@@ -220,7 +221,7 @@
       </section>
 
       <section class="panel">
-        <div class="ph"><div class="pid">C</div><h2 class="pt">Does it work?</h2><div class="pm">6 tasks, blind test</div></div>
+        <div class="ph"><div class="pid">C</div><h2 class="pt">Does it work?</h2><div class="pm">6 tasks, one run each</div></div>
         <div class="pb">
           <div class="stats">
             <div class="stat"><div><div class="big">17<small>/24</small></div><div class="what">blind picks for the skill</div></div><div class="vs">2 ties; 4 AI reviewers, 3 model families</div></div>
@@ -234,7 +235,7 @@
         <div class="tb w"><span class="k">Source</span><span class="v">github.com/FutureAtoms/karpathy-ladder</span></div>
         <div class="tb"><span class="k">License</span><span class="v">MIT, open source</span></div>
         <div class="tb"><span class="k">Facts as of</span><span class="v">2026-10-03</span></div>
-        <div class="tb w"><span class="k">Idea</span><span class="v">Andrej Karpathy (not affiliated)</span></div>
+        <div class="tb w"><span class="k">Idea</span><span class="v">Karpathy's post. Not affiliated with him or Anthropic</span></div>
       </div>
     </div>
 
